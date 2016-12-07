@@ -4,7 +4,7 @@ languageCode = "en-us"
 title = "Phil Chapman's Blog"
 theme = "hugo-future-imperfect"
 preserveTaxonomyNames = true
-paginate = 3
+paginate = 10
 disqusShortname = "shortname"
 googleAnalytics = ""
 
@@ -17,7 +17,7 @@ googleAnalytics = ""
     socialAppearAtTop    = true
     socialAppearAtBottom = true
     # set this to the section name if section is not post
-    viewMorePostLink     = "/aboutme"
+    viewMorePostLink     = "/post"
 
 # Optional Params
     categoriesByCount    = true
@@ -44,7 +44,7 @@ googleAnalytics = ""
 [params.intro]
     header    = "Phil Chapman's Blog"
     paragraph = "Drug discovery. Computational biology. R. Oncology."
-    about     = "I work in the Drug Discovery Unit at Cancer Research UK's Manchester Institute"
+    about     = "I am Lead Scientist for Bioinformatics in the Drug Discovery Unit at Cancer Research UK's Manchester Institute.  Previously I was an Associate Principal Scientist at AstraZeneca."
 
 # This will also appear on the sidebar.
 # A width of less than 100px is recommended
@@ -67,7 +67,7 @@ googleAnalytics = ""
 # You can use identifier to prepend a font awesome icon to your text
 [[menu.main]]
     name = "Blog"
-    url = "/blog"
+    url = "/post"
     identifier = "fa fa-newspaper-o"
     weight = 1
 

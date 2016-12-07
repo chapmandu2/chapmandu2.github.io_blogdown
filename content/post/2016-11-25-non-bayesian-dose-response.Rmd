@@ -1,9 +1,11 @@
 ---
 title: "Non-bayesian pharmaogenomic modelling"
-description: "The beginning"
 author: "Phil Chapman"
-categories: ["R", "chemical biology"]
-date: 2016-11-25
+date: '2016-11-25'
+description: The beginning
+categories:
+- R
+- chemical biology
 ---
 
 ```{r setup, include=FALSE}
@@ -17,11 +19,11 @@ library(EnsDb.Hsapiens.v75)
 
 ## Introduction
 
-In this example we do some very simple modelling using cancer cell line screening data and associated genetic data.  The purpose of this example is to demonstrate how data can be extracted from PharmacoSet objects and then be used to develop linear models of dose response vs genetic features.  However, there are uncertainties around IC50 estimation and cell line genetic feature classification (and meaning) which aren't carried through into the modelling.
+In this example we do some very simple modelling using cancer cell line screening data and associated genetic data.  The purpose of this example is to demonstrate how data can be extracted from **PharmacoSet** objects and then be used to develop linear models of dose response vs genetic features.  However, there are uncertainties around IC50 estimation and cell line genetic feature classification (and meaning) which aren't carried through into the modelling.
 
 ## Get the data
 
-PharmacoSet objects can be downloaded as follows:
+PharmacoSet objects can be downloaded as follows (commented out for speed of rendering):
 
 ```{r}
 #ccle_pset <- downloadPSet('CCLE', saveDir='~/BigData/PSets/')
@@ -95,6 +97,8 @@ affy_mat <- summarizeMolecularProfiles(GDSC, mDataType = 'rna', features = gene_
 dim(affy_mat)
 
 ```
+
+Note that I have a half written package called `tidyMultiAssay` that is available on [github](http://www.github.com/chapmandu2/tidyMultiAssay) which provides convenience functions for the extraction of data from PharmacoSet objects.
 
 ## Integrated data analysis
 

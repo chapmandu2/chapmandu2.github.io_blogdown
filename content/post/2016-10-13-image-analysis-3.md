@@ -2,8 +2,8 @@
 author: "Phil Chapman"
 categories: ["R", "Image analysis"]
 date: 2016-10-13
-title: Analysing imaging data from a compound screen 3
-description: Analysing a single image using EBImage
+description: "Analysing a single image using EBImage"
+title: "Analysing imaging data from a compound screen 3"
 ---
 
 Background
@@ -17,13 +17,13 @@ a workflow using open source image analysis software running on a 1000
 core High Performance Computing system.
 
 1.  [The problem and seeking a way
-    forward](/2016-10-11-image-analysis-1)
+    forward](/post/2016-10-11-image-analysis-1)
 2.  [Exporting data from Columbus/Omero to
-    linux](/2016-10-12-image-analysis-2)
+    linux](/post/2016-10-12-image-analysis-2)
 3.  [Analysing a single image using
-    EBImage](/2016-10-13-image-analysis-3)
+    EBImage](/post/2016-10-13-image-analysis-3)
 4.  [Analysing many images using
-    BatchJobs](/2016-10-21-image-analysis-4)
+    BatchJobs](/post/2016-10-21-image-analysis-4)
 5.  Analysing high dimensional data
 
 Aims
@@ -352,7 +352,7 @@ Session info
 
     sessionInfo()
 
-    ## R version 3.3.0 (2016-05-03)
+    ## R version 3.3.1 (2016-06-21)
     ## Platform: x86_64-apple-darwin13.4.0 (64-bit)
     ## Running under: OS X 10.11.4 (El Capitan)
     ## 
@@ -363,18 +363,20 @@ Session info
     ## [1] stats     graphics  grDevices utils     datasets  methods   base     
     ## 
     ## other attached packages:
-    ## [1] ggplot2_2.1.0  dplyr_0.5.0    EBImage_4.14.2
+    ## [1] ggplot2_2.2.0  dplyr_0.5.0    EBImage_4.16.0
     ## 
     ## loaded via a namespace (and not attached):
-    ##  [1] Rcpp_0.12.7         knitr_1.14          magrittr_1.5       
-    ##  [4] BiocGenerics_0.18.0 munsell_0.4.3       colorspace_1.2-6   
-    ##  [7] lattice_0.20-34     R6_2.2.0            jpeg_0.1-8         
-    ## [10] plyr_1.8.4          stringr_1.1.0       tools_3.3.0        
-    ## [13] parallel_3.3.0      grid_3.3.0          gtable_0.2.0       
-    ## [16] png_0.1-7           DBI_0.5-1           htmltools_0.3.5    
-    ## [19] lazyeval_0.2.0      yaml_2.1.13         abind_1.4-5        
-    ## [22] assertthat_0.1      digest_0.6.10       tibble_1.2         
-    ## [25] purrr_0.2.2         formatR_1.4         fftwtools_0.9-7    
-    ## [28] evaluate_0.9        rmarkdown_1.0.9016  tiff_0.1-5         
-    ## [31] labeling_0.3        stringi_1.1.2       scales_0.4.0       
-    ## [34] locfit_1.5-9.1
+    ##  [1] Rcpp_0.12.8         plyr_1.8.4          tools_3.3.1        
+    ##  [4] digest_0.6.10       evaluate_0.10       tibble_1.2         
+    ##  [7] gtable_0.2.0        lattice_0.20-34     png_0.1-7          
+    ## [10] DBI_0.5-1           yaml_2.1.14         parallel_3.3.1     
+    ## [13] blogdown_0.0.8      stringr_1.1.0       knitr_1.15.1       
+    ## [16] fftwtools_0.9-7     locfit_1.5-9.1      rprojroot_1.1      
+    ## [19] grid_3.3.1          R6_2.2.0            jpeg_0.1-8         
+    ## [22] rmarkdown_1.2       bookdown_0.3        purrr_0.2.2        
+    ## [25] magrittr_1.5        servr_0.4.1         backports_1.0.4    
+    ## [28] scales_0.4.1        htmltools_0.3.5     BiocGenerics_0.20.0
+    ## [31] abind_1.4-5         assertthat_0.1      mime_0.5           
+    ## [34] colorspace_1.3-1    httpuv_1.3.3        tiff_0.1-5         
+    ## [37] labeling_0.3        stringi_1.1.2       lazyeval_0.2.0     
+    ## [40] munsell_0.4.3

@@ -1,0 +1,249 @@
+---
+author: "Phil Chapman"
+categories: ["R", "NGS"]
+date: 2016-04-17
+title: "Analysis of Lexogen Quantseq Data: Part 1"
+---
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(Rsubread)
+library(ShortRead)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ensembldb)
+```
+
+## Introduction
+This workflow describes how the analysis of data from Lexogen's 3' Quantseq technique generated on an Illumina Nextseq can be analysed using R/Bioconductor.  The Lexogen approach generates reads from the 3'UTR of an mRNA transcript and can be used for count-based differential expression analysis.  Lexogen Quantseq libraries cost ~£15 per sample, and this low cost allows more samples to be profiled for a given budget.  Larger experiments permit more replicates, more time points, more compounds, or more cell lines to be included in an experiment, potentially making it more informative.
+
+See [the Lexogen website](https://www.lexogen.com/quantseq-3mrna-sequencing/) and a [Nature Methods advertising feature](http://www.nature.com/nmeth/journal/v11/n12/full/nmeth.f.376.html) for more information.  This figure below is a schematic of the library preparation protocol:
+
+![lib prep](/img/lexogen_schema.jpeg)
+
+## Methods
+The analysis is primary carried out using the `ShortRead` and `RSubread` [Bioconductor](www.bioconductor.org) packages for NGS analysis with `ggplot2` and the `cowplot` extension package used for visualisation.   The author thanks Martin Morgan, the `ShortRead` package author, for his assistance in developing this workflow.
+
+## Define locations
+Locations of various files and directories.  
+```{r}
+    fastq_dir <- '/Users/pchapman/BigData/Lexogen/raw_fastq'
+    ref_fa <- '/Users/pchapman/BigData/ENSEMBL/hs84/Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa'
+    ref_dir <- '/Users/pchapman/BigData/ENSEMBL/hs84'
+    gtf.file <- file.path(ref_dir, "Homo_sapiens.GRCh38.84.gtf")
+    sqlite_file <- 'Homo_sapiens.GRCh38.84.sqlite'
+    sqlite_path <- file.path(ref_dir, sqlite_file)
+    workflow_stats <- list()
+```
+
+## Define some functions for plotting
+Here we define some ggplot2 functions based on the `qa` function of the ShortRead package.
+```{r}
+   qa_plots <- function(shortfq_obj) {
+    x <- ShortRead::qa(shortfq_obj, lane='')
+    nuc_plot <- ggplot(x[['perCycle']]$baseCall, aes(x=Cycle, y=Count, colour=Base)) + geom_line() + cowplot::theme_cowplot()
+    qual_plot <- x[['perCycle']]$quality %>% group_by(Cycle) %>% summarise(QualScore=sum(Score*Count)/sum(Count)) %>% ungroup() %>% 
+        ggplot(aes(x=Cycle, y=QualScore)) + geom_line() + cowplot::theme_cowplot()
+    size_plot <- ggplot(data.frame(frag_size=width(shortfq_obj)), aes(x=frag_size)) + 
+        geom_bar(fill='pink', colour='black') + cowplot::theme_cowplot()
+    base_plot <- ggplot(data.frame(idx=1:50, dat=as.character(sread(shortfq_obj)[1:50]))) + 
+        geom_text(aes(x=1, y=idx, label=dat), size=rel(2.5), family='mono', hjust=0) + xlim(1,1.8) +
+        theme_bw() + theme(axis.text.x=element_text(size=0)) + xlab('')
+    return(list(nuc_plot=nuc_plot, qual_plot=qual_plot, size_plot=size_plot, base_plot=base_plot))
+} 
+```
+
+## Import a sample of data
+The `ShortRead::yield` function is used to load a subset of 1M 151bp single end Nextseq reads from a .fastq file.
+```{r}
+fq_fn <- grep('DO9_', list.files(fastq_dir, 'fastq.gz'), value = TRUE)[1]
+fq_path <- file.path(fastq_dir, fq_fn)
+fq_data <- ShortRead::yield(FastqSampler(fq_path, 1000000))
+```
+
+## Explore the raw data
+We now generate 3 plots using the `qa_plots` function defined above:
+*  Plot A depicts the proportion of reads with each nucleotide at positions 1-151.  It is evident that G's predominate towards the end of the reads, and A's increase up to around 60bp before reducing.  The read distribution seems to change markedly at around position 10.
+*  Plot B depicts the average quality score at positions 1-151 across all reads.  Quality reduces towards the end of the read with an uptick towards the very end, and the first 10bp seem to have lower quality than the second 10bp.
+*  Plot C is a histogram of read lengths: all reads are 151bp at this stage.
+
+```{r}
+qp <- qa_plots(fq_data)
+cowplot::plot_grid(qp$nuc_plot, qp$qual_plot, qp$size_plot, labels='auto')
+```
+
+Viewing a sample of 50 reads demonstrates what can be seen in the summary plots above.  Many reads have strings of G's towards the end, and poly-A tails are also in evidence.  The NextSeq sequencing chemistry returns a G when there is very low signal, suggesting that in fact the increase in incidence of G's is related to sequence quality rather than really being sequence related. 
+```{r, fig.width=11, fig.height=6}
+qp$base_plot
+```
+
+It is also useful to view the most frequent sequences which shows that strings of A's followed by G's are very common:
+```{r}
+ShortRead:::.freqSequences(qa(fq_data, lane=''), "read")
+```
+
+## Remove the 5' Adapter
+The first 12bp are in fact adapter sequence, hence the market shift in both quality and base distributions at this point.  These can be removed using the `ShortRead::narrow` function:
+```{r}
+fq <- fq_data
+fq <- ShortRead::narrow(fq, start=13)
+workflow_stats$step01_start <- length(fq)
+length(fq)
+```
+
+Regenerating the qa plots confirms that this has happened and we now have a 141 bp read size:
+```{r}
+qp <- qa_plots(fq)
+cowplot::plot_grid(qp$nuc_plot, qp$qual_plot, qp$size_plot, labels='auto')
+```
+
+## Remove poor quality data at the 3' end of the read
+The `ShortRead::trimTailw` function removes low-quality reads from the 3' end using a sliding window of nucleotides falling at or below a quality threshold.  Here we define a sliding window size of 12 by setting halfwidth to 6, a number of nucleotides as 6, and a quality threshold of 4.  We also remove reads that are now below 36bp in length:
+```{r}
+fq <- ShortRead::trimTailw(fq, k=6, a="4", halfwidth=6)
+fq <- fq[width(fq) >= 36]
+workflow_stats$step02_poorqual <- length(fq)
+length(fq)
+```
+
+The quality plots now look markedly different before with the relative proportions of the nucleotides looking much more even, although A's are still over-represented since we haven't removed the poly-A sequences yet.  Quality still declines but now levels out as would be expected given our filtering.  There also appear to be a subset of full length reads of high quality as indicated by the uptick at the right hand side of plots B and C.
+```{r}
+qp <- qa_plots(fq)
+cowplot::plot_grid(qp$nuc_plot, qp$qual_plot, qp$size_plot, labels='auto')
+```
+
+It is useful to eyeball a sample of reads at this point to confirm the removal of the low quality G bases and the retention of the poly-A sequences.
+```{r, fig.width=11, fig.height=6}
+qp$base_plot
+```
+
+##  Trim poly-A tails
+The poly-A tails can be identified using the `ShortRead::trimEnds` function to examine the right end of the reads and return the location of any A's.  Setting `ranges = TRUE` returns a ranges object which can then be fed into the ShortReads::narrow function to do the actual clipping.
+```{r}
+narrow_ranges <- ShortRead::trimEnds(sread(fq), right=TRUE, "A", relation="==", ranges=TRUE) 
+fq <- ShortRead::narrow(fq, start(narrow_ranges), end(narrow_ranges))
+fq <- fq[width(fq) >= 36]
+workflow_stats$step03_polya <- length(fq)
+length(fq)
+```
+
+Plot A shows that we have succeeded in reducing the over-representation of A's in the first at around 50 cycles.  
+```{r}
+qp <- qa_plots(fq)
+cowplot::plot_grid(qp$nuc_plot, qp$qual_plot, qp$size_plot, labels='auto')
+```
+
+Looking at the reads we can confirm the removal of poly-A's , however, there are still some embedded poly-A sequences that are 3'flanked by non-A nucleotides which need to be removed.
+```{r, fig.width=11, fig.height=6}
+qp$base_plot
+```
+
+## Trim embedded poly-A tails
+Here we apply the regexpr function to the read sequences (using `ShortRead::sread`) to identify the first position of a polyA of length 10.  This returns a vector of the same length as the `ShortReadQ` object which is either the start position of the polyA or -1 if no polyA was present.  This vector can be combined with the length of the read and fed into the `ShortRead::narrow` function to clip those reads that need to be clipped.  This gives the final set of reads for mapping.
+```{r}
+polyApos <- regexpr(pattern= 'AAAAAAAAAA', sread(fq), fixed=TRUE) %>% unlist()
+polyAclip_idx <- which(polyApos >= 0)
+polyAclip <- width(fq)
+polyAclip[polyAclip_idx] <- polyApos[polyAclip_idx] 
+fq <- narrow(fq, end=polyAclip)
+fq <- fq[width(fq) >= 36]
+workflow_stats$step04_3padapt <- length(fq)
+length(fq)
+```
+
+We see a slight improvement in the quality plots.
+```{r}
+qp <- qa_plots(fq)
+cowplot::plot_grid(qp$nuc_plot, qp$qual_plot, qp$size_plot, labels='auto')
+```
+
+And confirm that embedded poly-A's have been removed.
+```{r, fig.width=11, fig.height=6}
+qp$base_plot
+```
+
+## Align to reference genome using Rsubread
+At this point we have data that can be fed into a standard single end RNAseq workflow.  RSubread is a useful aligner for single end RNAseq data since it doesn't try to map across splice junctions
+
+```{r}
+tmp_fastq <- tempfile()
+writeFastq(fq, tmp_fastq)
+tmp_bam <- tempfile()
+align(index=file.path(ref_dir,"hs84_subread_index"),
+      readfile1=tmp_fastq,   
+      input_format='gzFASTQ', 
+      output_file=tmp_bam,   
+      nthreads=8)
+workflow_stats$step05_alignscores <- propmapped(tmp_bam)
+```
+
+## Count reads mapping to features
+Use `RSubread::featureCounts` to count features mapping to exons: note that strand-specific is set to 1 whereas, depending on the library preparation method, this is often set to 2 for poly-A RNAseq.
+
+```{r}
+fc_ensembl_84 <- featureCounts(files=tmp_bam,
+                               annot.ext=gtf.file,
+                               isGTFAnnotationFile=TRUE,
+                               GTF.featureType="exon",
+                               GTF.attrType="gene_id",
+                               useMetaFeatures=TRUE,
+                               allowMultiOverlap=FALSE,
+                               nthreads=8,
+                               strandSpecific=1,
+                               countMultiMappingReads=FALSE)
+```
+
+## Count reads mapping to protein-coding genes
+First of all we can use the ensembldb package to make a GRanges object containing information on all protein coding genes.
+```{r}
+if(!file.exists(sqlite_path)) {
+    ## generate the SQLite database file
+    ensembldb::ensDbFromGtf(gtf=gtf.file, path=ref_dir, outfile=sqlite_file, verbose=TRUE)
+}
+EnsDb.Hsapiens.v84 <- ensembldb::EnsDb(sqlite_path)
+ag <- ensembldb::genes(EnsDb.Hsapiens.v84, filter=list(GenebiotypeFilter('protein_coding'))) 
+ag
+```
+
+Then we can count the number of reads in the exons of all genes, and those in the exons of protein coding genes.
+```{r}
+#count of reads in exons
+fc_mat <- fc_ensembl_84$counts
+workflow_stats$step06_readsinexons <- sum(fc_mat)
+
+#count of reads in protein coding exons
+fc_mat_pc <- fc_mat[rownames(fc_mat) %in% ag$gene_id,]
+workflow_stats$step07_readsinproteincodingexons <- sum(fc_mat_pc)
+```
+
+## Evaluate the performance of the workflow
+During the workflow we have recorded the number of reads retained at each point and this is summarised in the plot below.  Eventually around 50% of reads map to a protein coding exon, although it is possible that this number could be increased by optimising the library preparation.  The libraries sequenced in this experiment had an insert size range from 122-1000bp with an average size of 186bp, whereas this can be increaed to 122-1500bp (avg 259bp) or 122-2000bp (avg 355bp).  Since around 20% of reads are lost in the first quality and size filtering step, a longer insert size could reduce this attrition.
+
+```{r}
+workflow_stats_df <- workflow_stats
+workflow_stats_df$step05_alignscores <- workflow_stats_df$step05_alignscores[1,'NumMapped']
+workflow_stats_df <- as.data.frame(workflow_stats_df) %>% 
+    mutate(fn=fq_fn) %>%
+    tidyr::gather(step, readcount,-fn)
+
+library(ggplot2)
+ggplot(workflow_stats_df, aes(x=step, y=readcount, fill=step)) + 
+    geom_bar(stat='identity') + 
+    geom_text(aes(label=round(readcount/10^6,3))) +
+    cowplot::theme_cowplot()  + 
+    xlab('') + ggtitle("Lexogen 3'Quantseq Read Processing") +
+    theme(legend.position='none',
+          axis.text.x=element_text(angle=330, vjust=1, hjust=0),
+          plot.margin = unit(c(2, 5, 0, 0), "lines"))
+
+```
+
+## Conclusion
+This vignette demonstrates a prototype analysis pipeline developed for the novel Quantseq 3'UTR RNA sequencing kit from Lexogen.  Although many approaches are available for the analysis of NGS data, R/Bioconductor has the advantage of being able to work from end to end in the same environment.  Its strong visualisation capabilities and high level functions allow the impact of analysis choices at each step to be readily understood during the prototyping stage.  Once prototyping is complete, a production pipeline could be implemented using the BiocParallel package with BatchJobs serving as the interface between R and a wide range of queuing software including SGE and Torque.   
+
+The workflow developed here for Lexogen Quantseq data showed that around 50% of reads generated are available for subsequent count based differential expression analysis analysis, and that modifying the insert size at the library preparation stage may increase this proportion.
+
+## Session Info
+```{r}
+sessionInfo()
+```

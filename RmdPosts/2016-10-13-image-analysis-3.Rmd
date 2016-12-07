@@ -1,0 +1,219 @@
+---
+output:
+  md_document:
+    variant: markdown_github
+author: "Phil Chapman"
+categories: ["R", "Image analysis"]
+date: 2016-10-13
+description: "Analysing a single image using EBImage"
+title: "Analysing imaging data from a compound screen 3"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r setup2, echo=FALSE, warning=FALSE, message=FALSE}
+library(EBImage)
+library(dplyr)
+library(ggplot2)
+img_dir <- '~/BigData/ExamplePhenix/MatlabOmero/2496/'
+img_fns <- list.files(img_dir, '.tif')
+
+```
+
+## Background
+
+A cell based compound screen can be used to identify chemical start points for the development of new drugs.  The analyses of the image data from such screens is computationally challenging, and whilst commercial software is available, this series of posts describes the development of a workflow using open source image analysis software running on a 1000 core High Performance Computing system.  
+
+1.  [The problem and seeking a way forward](/post/2016-10-11-image-analysis-1)
+2.  [Exporting data from Columbus/Omero to linux](/post/2016-10-12-image-analysis-2)
+3.  [Analysing a single image using EBImage](/post/2016-10-13-image-analysis-3)
+4.  [Analysing many images using BatchJobs](/post/2016-10-21-image-analysis-4)
+5.  Analysing high dimensional data
+
+## Aims
+
+In this blog post the aims are:
+
+- Identify image processing software to use
+- Write a simple segmentation and feature extraction algorithm
+- Convert the test script into a function that can be applied to multiple images
+
+## Software choice
+
+Whilst there are many choices of software for image analysis, I chose the [Bioconductor EBImage](http://bioconductor.org/packages/release/bioc/html/EBImage.html) package.  The reasons for this were:
+
+- R is my day to day scripting language of choice
+- Bioconductor packages are well documented and supported
+- There were a number of papers and tutorials where EBImage was used to analyse cell biology microscopy data.
+
+## Using EBImage
+### Getting data in
+Given an image directory stored as `img_dir` and a vector of filenames stored as `img_fns` an image can be imported as follows:
+```{r}
+img_fns[2]
+img <- readImage(file.path(img_dir,img_fns[2]))
+class(img)
+img
+```
+Since the image is in OME-TIFF format, there are actually 12 frames in the file, each represented as a matrix 1080 by 1080 of intensity values:
+
+```{r}
+dim(img)
+```
+
+In this case the 12 images correspond to 3 focal planes and 4 channels (colours).
+
+### Viewing images
+Images can be viewed using the display function and subset using the `getFrame` function.   Here we get the first frame which corresponds to the first focal plane of the channel corresponding to hoescht staining of the nuclei.  It is also necessary to scale the intensity values to a narrower range so that features are visible using the normalize function.  Here we also crop the image just to make it easier to see what's going on.
+
+```{r, fig.height=4, fig.width=4, fig.align='center'}
+nuclei <- getFrame(img,1)
+nuclei <- nuclei[1:400,1:400] #crop
+nuclei_norm <- normalize(getFrame(nuclei,1))
+display(nuclei_norm, method='raster')
+```
+
+### Identifying nuclei
+First step is to smooth the image using the `gblur` function and then threshold the image using `threshold`.  To remove small unwanted objects and fill any holes we can use the `opening` and `fillHull` functions respectively.
+
+```{r}
+nuclei_smooth <- gblur(nuclei_norm, 2) #blur to make thresholding easier
+nuclei_thresh <- thresh(nuclei_smooth, w = , h = 7, offset = 0.0001)  #threshold
+nuclei_open <- opening(nuclei_thresh, kern=makeBrush(3, shape="disc")) #open
+nuclei_fill <- fillHull(nuclei_open) #fill
+```
+
+We can then visualise the images side by side to see how our very simple processing algorithm has worked:
+```{r , fig.height=3, fig.width=8, fig.align='center'}
+list(nuclei_smooth, nuclei_thresh, nuclei_open, nuclei_fill) %>%
+    lapply(normalize) %>%
+    EBImage::combine() %>%
+    tile(nx=4, fg.col="red", lwd=20) %>%
+    display(method='raster')
+
+```
+Clearly there is room for optimisation as there are lots of small objects that clearly aren't real, but this is a good start point!
+
+### Viewing identified objects
+To work with individual objects in an image we use the `bwlabel` function to label them.  To visualise the mask initially we can display in colour mode:
+```{r , fig.height=4, fig.width=4, fig.align='center'}
+nuclei_mask <- bwlabel(nuclei_fill)
+display(colorLabels(nuclei_mask), method='raster')
+```
+
+It would be more useful, however, to transpose the mask onto the original image.  We can do this with the `paintObjects` function which lets us paint objects from one image onto another:
+
+```{r , fig.height=4, fig.width=4, fig.align='center'}
+nuclei_painted <- paintObjects(x=nuclei_mask, 
+                               tgt=rgbImage(green=normalize(nuclei)))
+display(nuclei_painted, method='raster')
+```
+
+We can also display the individual objects seperately using the `stackObjects` and `paintObjects` functions:
+
+```{r , fig.height=4, fig.width=4, fig.align='center'}
+nuclei_stacked <-  stackObjects(nuclei_mask, nuclei_painted)
+nuclei_tiled <- tile(nuclei_stacked[,,,100:124], nx=5)
+display(nuclei_tiled, method='raster')
+
+```
+
+### Feature extraction
+Having identified nuclei as objects in our image, we now want to generate some numerical feature information on these.  The `computeFeatures` function in EBImage allows us to generate a large number of different metrics, including general information on size and shape, as well as pixel intensity information.  We need to provide an object mask and, optionally, a reference image from which the pixel intensities are taken.  For example:
+
+```{r}
+features_df <- computeFeatures(nuclei_mask,  ref=nuclei, xname="nuc",  refnames="dna", 
+                              methods.noref=c("computeFeatures.moment", "computeFeatures.shape"),
+                              methods.ref=c("computeFeatures.basic", "computeFeatures.moment"))
+dim(features_df)
+features_df[1:10,1:10]
+```
+In this output, `nuc.0.m.cx` and  `nuc.0.m.cy` give the position of the object, whilst `nuc.0.s.area` gives its size.  There are 37 features to explore just from the Hoescht staining.  If there was also staining for the cytoplasm, we could also identify cell boundaries and start to measure size of cells and so on.
+
+### Exploring cell population data
+The image processing features in EBImage provide a lot of functionality for accurately distinguishing cellular features.  However, an additional approach is to analyse the population of cells and classify according to their features.  Our original algorithm seemed to misidentify small spots of intensity as nuclei, and also combine more than one nucleus together.  Simply plotting a histogram of nucleus area helps us to explore this:
+
+```{r, fig.height=4, fig.width=4, fig.align='center'}
+features_df <- as.data.frame(features_df)
+ggplot(features_df, aes(x=nuc.0.s.area)) + geom_histogram(bins=30) + theme_bw()
+
+```
+
+As anticipated there are many very small objects, then a population with a mean size of around 500, then a number of larger objects.  Let's look only those objects greater than 250 in size:
+
+```{r, fig.height=4, fig.width=4, fig.align='center'}
+features_df_filtered <- features_df %>%
+    dplyr::mutate(cell_id=row_number()) %>%
+    dplyr::filter(nuc.0.s.area > 250)
+
+filtered_cell_ids <- features_df_filtered$cell_id
+nuclei_filtered <- nuclei_mask * (nuclei_mask %in% filtered_cell_ids)
+
+nuclei_painted_filtered <- paintObjects(x=nuclei_filtered,
+                               tgt=rgbImage(green=normalize(nuclei)))
+display(nuclei_painted_filtered, method='raster')
+
+
+```
+
+Whilst it would be beneficial to improve the object detection algorithm, using object features to classify objects on whether they are likely to be a cell is a powerful additional way of ensuring the accuracy of image segmentation. 
+
+### Further information and tutorials
+
+For more information on the functionality of EBImage see the [package vignette](https://bioconductor.org/packages/release/bioc/vignettes/EBImage/inst/doc/EBImage-introduction.html) and this [thread on the Bioconductor support site](https://support.bioconductor.org/p/87408/).
+
+## Writing a function
+
+Having defined a reasonable analysis, we can write a function to reproducibly carry out the same analysis on multiple files and return the features data frame:
+
+```{r}
+my_analysis <- function(img_dir, img_fn, size_min=200, size_max=800) {
+    img <- readImage(file.path(img_dir,img_fn))
+    nuclei <- getFrame(img,1)
+    nuclei_smooth <- gblur(nuclei, 2) #blur to make thresholding easier
+    nuclei_thresh <- thresh(nuclei_smooth, w = , h = 7, offset = 0.0001)  #threshold
+    nuclei_open <- opening(nuclei_thresh, kern=makeBrush(3, shape="disc")) #open
+    nuclei_fill <- fillHull(nuclei_open) #fill
+    nuclei_mask <- bwlabel(nuclei_fill)
+    features_df <- computeFeatures(nuclei_mask,  ref=nuclei, xname="nuc",  refnames="dna", 
+                              methods.noref=c("computeFeatures.moment", "computeFeatures.shape"),
+                              methods.ref=c("computeFeatures.basic", "computeFeatures.moment"))
+    out <- features_df %>%
+        as.data.frame() %>%
+        tbl_df() %>%
+        dplyr::mutate(cell_id=row_number(), img_fn=img_fn) %>%
+        dplyr::filter(nuc.0.s.area > size_min, nuc.0.s.area < size_max)
+    return(out)
+}
+```
+
+Executing this function gives:
+```{r}
+my_analysis(img_dir, img_fns[2])[,1:10]
+```
+
+## Applying the function to multiple images
+
+Having encapsulated the analysis method as a function, it is then easy to apply it to multiple images.  Here we just use `purrr::map` to do this in series (one after another), but this gives us the basis to parallelise which will be the topic of the next post. 
+
+```{r, fig.height=4, fig.width=4, fig.align='center'}
+six_images <- purrr::map(img_fns[1:6], my_analysis, img_dir=img_dir, size_min=200, size_max=3000)
+six_images_df <- six_images %>% dplyr::bind_rows()
+ggplot(six_images_df, aes(x=nuc.0.s.area)) + geom_histogram(bins=30) + 
+    facet_wrap(~img_fn) + theme_bw()
+```
+
+## Conclusion
+In this blog post we have carried out a basic analysis of an image to extract useful cellular phenotype information, and turned this analysis into a function that can be applied to multiple images.  In the next section, we will look at how we can exploit the compute power of an HPC to analyse tens of thousands of images in parallel.
+
+
+## Session info
+```{r}
+sessionInfo()
+```
+
+
+
+

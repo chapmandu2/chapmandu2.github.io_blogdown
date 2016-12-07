@@ -14,10 +14,10 @@ knitr::opts_chunk$set(echo = TRUE)
 
 A cell based compound screen can be used to identify chemical start points for the development of new drugs.  The analyses of the image data from such screens is computationally challenging, and whilst commercial software is available, this series of posts describes the development of a workflow using open source image analysis software running on a 1000 core High Performance Computing system.  
 
-1.  [The problem and seeking a way forward](/2016-10-11-image-analysis-1)
-2.  [Exporting data from Columbus/Omero to linux](/2016-10-12-image-analysis-2)
-3.  [Analysing a single image using EBImage](/2016-10-13-image-analysis-3)
-4.  [Analysing many images using BatchJobs](/2016-10-21-image-analysis-4)
+1.  [The problem and seeking a way forward](/post/2016-10-11-image-analysis-1)
+2.  [Exporting data from Columbus/Omero to linux](/post/2016-10-12-image-analysis-2)
+3.  [Analysing a single image using EBImage](/post/2016-10-13-image-analysis-3)
+4.  [Analysing many images using BatchJobs](/post/2016-10-21-image-analysis-4)
 5.  Analysing high dimensional data
 
 ## Aims

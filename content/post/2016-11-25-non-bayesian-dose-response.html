@@ -1,9 +1,11 @@
 ---
 title: "Non-bayesian pharmaogenomic modelling"
-description: "The beginning"
 author: "Phil Chapman"
-categories: ["R", "chemical biology"]
-date: 2016-11-25
+date: '2016-11-25'
+description: The beginning
+categories:
+- R
+- chemical biology
 ---
 
 
@@ -13,11 +15,11 @@ date: 2016-11-25
 
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
-<p>In this example we do some very simple modelling using cancer cell line screening data and associated genetic data. The purpose of this example is to demonstrate how data can be extracted from PharmacoSet objects and then be used to develop linear models of dose response vs genetic features. However, there are uncertainties around IC50 estimation and cell line genetic feature classification (and meaning) which aren’t carried through into the modelling.</p>
+<p>In this example we do some very simple modelling using cancer cell line screening data and associated genetic data. The purpose of this example is to demonstrate how data can be extracted from <strong>PharmacoSet</strong> objects and then be used to develop linear models of dose response vs genetic features. However, there are uncertainties around IC50 estimation and cell line genetic feature classification (and meaning) which aren’t carried through into the modelling.</p>
 </div>
 <div id="get-the-data" class="section level2">
 <h2>Get the data</h2>
-<p>PharmacoSet objects can be downloaded as follows:</p>
+<p>PharmacoSet objects can be downloaded as follows (commented out for speed of rendering):</p>
 <pre class="r"><code>#ccle_pset &lt;- downloadPSet(&#39;CCLE&#39;, saveDir=&#39;~/BigData/PSets/&#39;)
 #gdsc_pset &lt;- downloadPSet(&#39;GDSC&#39;, saveDir=&#39;~/BigData/PSets/&#39;)</code></pre>
 <p>And then loaded in the normal way:</p>
@@ -101,6 +103,7 @@ dim(genetic_mat)</code></pre>
 <pre class="r"><code>affy_mat &lt;- summarizeMolecularProfiles(GDSC, mDataType = &#39;rna&#39;, features = gene_info$probe_id, summary.stat=&#39;first&#39;, verbose=FALSE) %&gt;% exprs() %&gt;% t()
 dim(affy_mat)</code></pre>
 <pre><code>## [1] 1124    2</code></pre>
+<p>Note that I have a half written package called <code>tidyMultiAssay</code> that is available on <a href="http://www.github.com/chapmandu2/tidyMultiAssay">github</a> which provides convenience functions for the extraction of data from PharmacoSet objects.</p>
 </div>
 <div id="integrated-data-analysis" class="section level2">
 <h2>Integrated data analysis</h2>
