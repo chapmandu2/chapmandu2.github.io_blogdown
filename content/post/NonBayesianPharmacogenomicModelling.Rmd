@@ -1,0 +1,152 @@
+---
+title: "Non-bayesian pharmaogenomic modelling"
+description: "The beginning"
+author: "Phil Chapman"
+categories: ["R", "chemical biology"]
+date: 2016-11-25
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(PharmacoGx)
+library(dplyr)
+library(Biobase)
+library(ggplot2)
+library(EnsDb.Hsapiens.v75)
+```
+
+## Introduction
+
+In this example we do some very simple modelling using cancer cell line screening data and associated genetic data.  The purpose of this example is to demonstrate how data can be extracted from PharmacoSet objects and then worked on.
+
+## Get the data
+
+PharmacoSet objects can be downloaded as follows:
+
+```{r}
+#ccle_pset <- downloadPSet('CCLE', saveDir='~/BigData/PSets/')
+#gdsc_pset <- downloadPSet('GDSC', saveDir='~/BigData/PSets/')
+```
+
+And then loaded in the normal way:
+```{r}
+load('~/BigData/PSets/GDSC.RData')
+
+```
+
+## Explore the PharmacoSet objects
+
+Objects have a show method so calling the name of the object reveals lots of useful information about it.
+```{r}
+GDSC
+```
+
+There are useful functions to show the elements of PharmacoSet object: drugs, cells and molecular data types:
+```{r}
+drugNames(GDSC)[1:10] 
+cellNames(GDSC)[1:10]
+mDataNames(GDSC)
+```
+
+
+## Dose response data
+We can plot the dose response data for a cell line:
+```{r}
+drugDoseResponseCurve(drug='Nutlin-3', cellline='697', pSets=GDSC, plot.type='Both')
+```
+
+And get the sensitivity measure values for all cell lines for Nutlin-3 and Erlotinib:
+```{r}
+sens_mat <- summarizeSensitivityProfiles(GDSC, sensitivity.measure = 'ic50_published', drugs = c('Nutlin-3', 'Erlotinib'), verbose = FALSE) %>% t()
+sens_mat <- 9-log10(sens_mat)
+dim(sens_mat)
+```
+
+Unfortunately there isn't a convenience function to extract the dose response data itself, but this can be done as follows:
+
+```{r}
+#get the information about the curve of interest
+drug_profiles <- GDSC@sensitivity$info %>% 
+    tibble::rownames_to_column('curve_id') %>%
+    dplyr::filter(drugid=='Nutlin-3', cellid=='697')
+drug_profiles
+
+#the raw data is stored in a 3D matrix, can extract as follows:
+GDSC@sensitivity$raw["drugid_1047_697",,]
+
+```
+
+## Molecular profile data
+
+Feature names are symbols for the mutation data and a derivation of ensembl id's for expression data.  Gene name information can be obtained using EnsDb.Hsapiens.v75 package
+```{r}
+gene_info <- ensembldb::genes(EnsDb.Hsapiens.v75, filter=GenenameFilter(c('TP53', 'EGFR')), return.type='data.frame') %>%
+    dplyr::select(gene_id, gene_name) %>%
+    dplyr::mutate(probe_id=paste0(gene_id, '_at'))
+gene_info
+```
+
+Get the mutatation and expression data for TP53 and EGFR:
+```{r}
+genetic_mat <- summarizeMolecularProfiles(GDSC, mDataType = 'mutation', features = gene_info$gene_name, summary.stat='and', verbose=FALSE) %>% exprs() %>% t()
+dim(genetic_mat)
+
+affy_mat <- summarizeMolecularProfiles(GDSC, mDataType = 'rna', features = gene_info$probe_id, summary.stat='first', verbose=FALSE) %>% exprs() %>% t()
+dim(affy_mat)
+
+```
+
+## Integrated data analysis
+
+Combine data together and turn into a data frame
+```{r}
+#sensitivity data 
+sens_df <- sens_mat %>% as.data.frame() %>% tibble::rownames_to_column('cell_line')
+
+#mutation data
+colnames(genetic_mat) <- paste0(colnames(genetic_mat), '_mut' )
+genetic_df <- genetic_mat %>% as.data.frame() %>% tibble::rownames_to_column('cell_line')
+
+#affymetrix data
+colnames(affy_mat) <- paste0(colnames(affy_mat), '_affy' )
+affy_df <- affy_mat %>% as.data.frame() %>% tibble::rownames_to_column('cell_line')
+
+#combine into a single data frame
+combined_df <- sens_df %>% 
+    inner_join(genetic_df, by='cell_line') %>% 
+    inner_join(affy_df, by='cell_line')
+
+combined_df %>% tbl_df()
+
+```
+
+
+Now do some basic modelling.  Nutlin-3 is more effective in TP53 wild type than mutant cell lines:
+```{r}
+lm(`Nutlin-3`~TP53_mut, data=combined_df) %>% summary()
+ggplot(combined_df, aes(y=`Nutlin-3`, x=TP53_mut)) + geom_violin() + geom_point()
+```
+
+Whereas Erlotinib is more effective in cell lines with high levels of expression of its target, EGFR.
+```{r}
+lm(Erlotinib~ENSG00000146648_at_affy, data=combined_df) %>% summary()
+ggplot(combined_df, aes(y=Erlotinib, x=ENSG00000146648_at_affy)) + geom_point() + geom_smooth(method='lm')
+
+```
+
+The extension of this is to treat tissue as a covariate since some tissues have higher expression than others or have a higher level of mutation.
+
+## The Bayesian bit
+There are several sources of uncertainty that are not accounted for by using a simple linear model:
+
+- How accurate is the sensitivity measure estimate and how much information are we losing by converting the dose response curve to a single value?  
+- Are we able to measure resistant and sensitive cell lines equally accurately?
+- How accurate is our classifcation of mutation status - might we have missed mutations in some cell lines, and erroneously called variants in others?  How sure can we be of the functional signifance of a mutation?
+
+Could a Bayesian framework allow us to calculate a posterior distribution of effect size of a genetic feature on response to compound?
+
+## Session Info
+```{r}
+sessionInfo()
+```
+

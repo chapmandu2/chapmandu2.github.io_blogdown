@@ -1,0 +1,114 @@
+---
+author: "Phil Chapman"
+categories: ["R", "Image analysis"]
+date: 2016-10-21
+description: "Analysing many images using BatchJobs"
+title: "Analysing imaging data from a compound screen 4"
+---
+
+
+<!-- BLOGDOWN-BODY-BEFORE
+
+/BLOGDOWN-BODY-BEFORE -->
+
+<div id="background" class="section level2">
+<h2>Background</h2>
+<p>A cell based compound screen can be used to identify chemical start points for the development of new drugs. The analyses of the image data from such screens is computationally challenging, and whilst commercial software is available, this series of posts describes the development of a workflow using open source image analysis software running on a 1000 core High Performance Computing system.</p>
+<ol style="list-style-type: decimal">
+<li><a href="/2016-10-11-image-analysis-1">The problem and seeking a way forward</a></li>
+<li><a href="/2016-10-12-image-analysis-2">Exporting data from Columbus/Omero to linux</a></li>
+<li><a href="/2016-10-13-image-analysis-3">Analysing a single image using EBImage</a></li>
+<li><a href="/2016-10-21-image-analysis-4">Analysing many images using BatchJobs</a></li>
+<li>Analysing high dimensional data</li>
+</ol>
+</div>
+<div id="aims" class="section level2">
+<h2>Aims</h2>
+<p>In this blog post the aims are:</p>
+<ul>
+<li>Decide which approach to use to parallelise across a cluster</li>
+<li>Test on a small subset of images</li>
+<li>Test on a real world example of one plate’s worth of images</li>
+</ul>
+</div>
+<div id="software-choice" class="section level2">
+<h2>Software choice</h2>
+<p>R has a number of packages which allow parallisation including <code>foreach</code> and the base <code>parallel</code> package. The <code>parallel::parLapply</code> function, for example, allows a function to be executed against every element in a list in a similar way to <code>base::lapply</code>, except that the processing can be spread over multiple cores. This allows a 4-8 fold speed up of such calculation (depending on the number of cores the machine has).</p>
+<p>However, when using a compute cluster the situation is slightly different as we have multiple nodes of the cluster each with multiple cores. In this case we want to spread the load out over the cores of <em>different</em> machines, so a more sophisticated approach is called for.</p>
+<p>The <a href="https://CRAN.R-project.org/package=BatchJobs">BatchJobs R package</a> integrates R with batch computing systems like PBS/Torque and Sun Grid Engine. The <a href="https://github.com/tudo-r/BatchJobs/wiki/Configuration">documentation</a> is a little intimidating but the configuration is actually quite simple and entails defining a <code>.BatchJobs.R</code> file which sets up the R session, and a <code>.templ</code> file which provides a template for the generation of PBS or Sun Grid Engine shell scripts. This <a href="https://nsaunders.wordpress.com/2015/04/01/configuring-the-r-batchjobs-package-for-torque-batch-queues/">blog post</a> covers the basics well but basically if you are comfortable submitting jobs to a batch system and can use R then you will be able to set BatchJobs up.</p>
+</div>
+<div id="thinking-about-practicalities" class="section level2">
+<h2>Thinking about practicalities</h2>
+<p>Whilst parallisation across hundreds or thousands of cores is an exciting prospect, too much parallisation can be a bad thing. In our case we have 9 images per well of a 384 well plate, giving around 3500 images in total per plate. Simplistically we could split this task into 3500 jobs and submit them to the cluster, but since each job only takes 10-20 seconds, the overhead associated with submitting the jobs will start to become a limiting factor in how quickly the entire analysis takes place. 350 jobs of 10 images each could be more efficient.</p>
+<div id="representing-the-image-file-information-as-a-data-frame" class="section level3">
+<h3>Representing the image file information as a data frame</h3>
+<p>A data frame is a useful and convenient way to store file information on each image. Here each row of the data frame represents an image file and has two columns img_dir and img_fn:</p>
+<pre class="r"><code>images_df &lt;- data.frame(img_dir=data_dir, 
+                        img_fn=list.files(data_dir, &#39;*.tif&#39;), stringsAsFactors = FALSE)</code></pre>
+</div>
+<div id="defining-a-multi-image-function" class="section level3">
+<h3>Defining a multi-image function</h3>
+<p>The function below takes a data frame with two columns named img_dir and img_fn and runs the my_analysis function on each row of data in series.</p>
+<pre class="r"><code>proc_images_multi &lt;- function(df) {
+    df %&gt;%
+        purrr::invoke_rows(.f=my_analysis, .d=., .labels=FALSE) 
+}</code></pre>
+<p>This could be called as follows:</p>
+<pre class="r"><code>x &lt;- proc_images_multi(images_df[1:4,])</code></pre>
+<p>Being able to process more than one image per job gives us useful flexibility when submitting the analysis to the cluster.</p>
+</div>
+</div>
+<div id="running-the-parallelised-analysis-on-the-cluster" class="section level2">
+<h2>Running the parallelised analysis on the cluster</h2>
+<div id="split-the-data-frame-of-images-into-chunks" class="section level3">
+<h3>Split the data frame of images into chunks</h3>
+<p>The data frame of images can be split into a list of smaller data frames as follows:</p>
+<pre class="r"><code>split_images_df &lt;- split(as.data.frame(images_df), sample(200, nrow(images_df), replace=TRUE))</code></pre>
+<p>Here we have split the data frame into a list of 200 data frames which will be processed in parallel. The size of the list can be optimised depending on the analysis: a smaller number of images might benefit from a smaller list whereas a larger number of images might benefit from a larger list and so taking fuller advantage of the cluster. Depending on the policy of the system administrators, it may not even be possible for a single user to take full advantage of the cluster anyway.</p>
+</div>
+<div id="setting-up-the-registry" class="section level3">
+<h3>Setting up the registry</h3>
+<p>To use BatchJobs we first set up a registry which is a database of information about jobs to be submitted. BatchJobs will handles all of the submission to the queue, assuming it has been configured correctly. We need to provide a list of packages to include, and also define any functions that we rely on - <code>my_analysis</code> and <code>proc_image_multi</code> in this case - in a seperate source file.</p>
+<pre class="r"><code>library(BatchJobs)
+reg &lt;- makeRegistry(id=&quot;BatchJobs&quot;,
+                    packages=c(&#39;EBImage&#39;, &#39;dplyr&#39;, &#39;tidyr&#39;, &#39;purrr&#39;), #packages to include
+                    src.files = &#39;functions.R&#39;)  #need to source functions</code></pre>
+</div>
+<div id="submitting-jobs-to-the-registry" class="section level3">
+<h3>Submitting jobs to the registry</h3>
+<p>We now have a function that can be mapped or applied to a list of data frames, and this forms the basis of the <code>BatchMap</code> function from BatchJobs. Note that we specify the resources appropriately as one processor from one node per job, and supply a realistic wall time of 10 minutes to maximise the chances of our relatively small jobs being given priority by the batch system.</p>
+<pre class="r"><code>batchMap(reg,
+         fun=proc_images_multi,
+         df=split_images_df)
+submitJobs(reg, resources = list(nodes = 1, ppn=1, walltime=&quot;00:00:10:00&quot;))</code></pre>
+<p>The progress of the jobs and any errors can be monitored with the <code>showStatus</code> and <code>getJobInfo</code> functions:</p>
+<pre class="r"><code>showStatus(reg)
+done &lt;- findDone(reg)
+job_info &lt;- getJobInfo(reg)</code></pre>
+</div>
+<div id="collate-the-results" class="section level3">
+<h3>Collate the results</h3>
+<p>Finally we can collate the results using the <code>reduceResults...</code> family of functions to get a list of data frames which can then be collapsed into one.</p>
+<pre class="r"><code>res &lt;- reduceResultsList(reg, done)
+res_df &lt;- dplyr::bind_rows(res)</code></pre>
+</div>
+</div>
+<div id="performance" class="section level2">
+<h2>Performance</h2>
+<p>As anticipated the analysis of the plate’s worth of images took 3-4 minutes when split into 200 jobs of around 15-20 images each. This compared favourably with an analysis time per plate of over 30 minutes on Columbus, especially since only 200 out of 1000 cores were used.</p>
+</div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>In this blog post we used the BatchJobs R package to parallelise the analysis of 3000 images from a single plate over 200 cores of a 1000 core cluster. This workflow could be readily scaled up to handle larger datasets of 10s or even hundreds of plates. In the next and final blog of this series we will analyse the cell level data in more detail.</p>
+</div>
+
+
+
+<!-- BLOGDOWN-HEAD
+
+
+
+
+
+
+/BLOGDOWN-HEAD -->

@@ -1,0 +1,277 @@
+---
+author: "Phil Chapman"
+categories: ["R", "Image analysis"]
+date: 2016-10-12
+title: "Analysing imaging data from a compound screen 2"
+description: "Exporting data from Columbus/Omero to linux"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+A cell based compound screen can be used to identify chemical start points for the development of new drugs.  The analyses of the image data from such screens is computationally challenging, and whilst commercial software is available, this series of posts describes the development of a workflow using open source image analysis software running on a 1000 core High Performance Computing system.  
+
+1.  [The problem and seeking a way forward](/2016-10-11-image-analysis-1)
+2.  [Exporting data from Columbus/Omero to linux](/2016-10-12-image-analysis-2)
+3.  [Analysing a single image using EBImage](/2016-10-13-image-analysis-3)
+4.  [Analysing many images using BatchJobs](/2016-10-21-image-analysis-4)
+5.  Analysing high dimensional data
+
+### Aims
+The key objectives are:
+
+1.  Connect to and navigate the [OMERO](http://www.openmicroscopy.org/site/products/omero) image store programatically
+2.  Identify images corresponding to a plate.
+3.  Export images
+
+## Possible OMERO APIs and dependency hell
+
+Although [Columbus](http://www.perkinelmer.co.uk/category/image-analysis-software) is commerical software, it uses the open source [OMERO](http://www.openmicroscopy.org/site/products/omero) software as an image repository.  However, it uses a relatively old and unsupported version (4.4.2.1) versus the current version of 5.3.  Reading the documentation showed that there are API's for Java, Python and Matlab that allow export of images into the open [OME-TIFF](http://www.openmicroscopy.org/site/products/ome-tiff) format.   Since Python is my second language of choice I spent some time attempting to install the OMERO.py but hit a block installing a dependency called ZeroC ICE.  Once again an old version was required, and this in turn required old versions of other dependencies.  Since there seemed to be no clear way forward, I instead opted to look at OMERO.matlab.  [Installation of OMERO.matlab](http://www.openmicroscopy.org/site/support/omero4/developers/Matlab.html) involved simply [downloading the matlab code](http://downloads.openmicroscopy.org/omero/4.4.12/) and adding some java libraries from the OMERO.insight client application.  Despite not being an optimal situation, the most pragmatic approach at this early stage was settle on something that worked and then optimise later.
+
+## Connecting to OMERO
+Firstly I modified the ice.config file so that it contained the correct server name and user credentials:
+
+```
+# Instead of defining the entire Ice.Default.Router property,
+# it is also an option to specify just omero.host which will
+# be inserted into a template Ice.Default.Router
+
+omero.host=host_ip
+
+
+# If your blitz server runs on a non-standard port (not 4064)
+# then omero.port can also be set.
+
+## omero.port=4064 (default)
+## omero.port=14064
+
+# Login information can also be provided via configuration
+# files, though storing passwords in config files can be
+# dangerous.
+
+omero.user=username
+omero.pass=userpasswd
+
+```
+
+This is NOT a safe thing to do long term but will suffice for testing.
+
+We then launch matlab from within the OMERO.matlab directory and connect to the OMERO server as follows:
+
+```{matlab}
+%start client
+client = loadOmero()
+session=client.createSession()
+```
+
+And tidy up as follows:
+```{matlab}
+client.closeSession()
+clear client
+clear session
+```
+
+## Finding plates
+There are a small number of built in functions for OMERO.matlab although generally the user is expected to navigate through the object model himself.  This is relatively straightforward once you understand the principles involved.  Screens associated with a user could be retrieved as follows:
+
+```{matlab}
+screens=session.getScreens()
+screens(3).getName.getValue % gives name of screen as seen in list of screens in columbus
+```
+
+A list of plates associated with a given screen could then be retrieved as follows:
+```{matlab}
+platesList = screens(3).linkedPlateList
+plate=platesList.get(1)
+plate.getName.getValue() % gives name of plate as seen in list of plates
+plateId=plate.getId().getValue()
+```
+
+Reassuringly the names and id's of the plates and screens were consistent with those seen using the Columbus client.  Pressing tab after a period (.) revealed the properties and functions associated with the object, so this helped to navigate through the object tree.
+
+## Exporting images
+Exploring the API code and documentation identified a function called `exportImageAsOMETIFF`.  This was tested by combining this with the `getImage` function and an id acquired from the Columbus client:
+
+```{matlab}
+img = session.getImage(1234)
+exportImageAsOMETIFF(session, img, 'test.tif')
+```
+
+The correct image was successfully generated! 
+
+## Finding images associated with a plate
+How images were linked to screens and plates is somewhat less obvious.  However, it is possible to define an HQL query (HQL is a simplified version of SQL) that links these together as follows:
+
+```{matlab}
+sql = ['select well from Well as well '...
+'left outer join fetch well.plate as pt '...
+'left outer join fetch well.wellSamples as ws '...
+'left outer join fetch ws.plateAcquisition as pa '...
+'left outer join fetch ws.image as img '...
+'where well.plate.id = ', num2str(plateId)]
+
+%run the query
+wellList = session.getQueryService().findAllByQuery(sql, [])
+```
+
+What we get here is a list of wells associated with a plate, which also includes the plateAcquisition (or scan) for a well and the resultant image.  So, the relationships are as follows:
+
+- well : plate = 1:1 
+- well : wellSample = 1:many 
+- wellSample : plateAcquisition = 1:1 
+- wellSample : image = 1:1 
+
+Therefore we can see how many wells are associated with the plate we queried for as follows: 
+
+```{matlab}
+%number of wells
+wellList.size()
+```
+
+The `get()` method can retrieve one of the wells and we can then operate on that to get the name of the plate it's associated with (which should match that of plateID) as well as its position on the plate:
+
+```{matlab}
+%get the first well
+well = wellList.get(0)
+
+%plate name - use any one of the wells to get the same value
+well.getPlate.getName.getValue
+
+%well row and column
+well.getRow.getValue
+well.getColumn.getValue
+```
+
+As explained above, a well can have one or more wellSamples which represent the seperate images captured of the plate.  In this case each image represents a different field of view, although in other cases it could represent a different timepoint.  We are now in a position where we can get an image and export it:  
+```{matlab}
+
+%get well sample
+ws  = well.copyWellSamples()
+%number of well samples
+ws.size
+%get the image and export it
+img = ws.get(0).getImage
+img.getId.getValue
+exportImageAsOMETIFF(session, img, 'test.tif')
+```
+
+## Writing a function to export images from a plate
+We now have all of the building blocks to write a matlab function to export images from a plate, this is displayed below.  The function interates through each well and each well sample, exporting images and embedding the plate location and image id in the filename:
+
+```{matlab}
+function [] = exportPlate(session, plate_id, parent_dir, well_max, fov_max)
+
+%determine output directory
+out_dir = [parent_dir, '/', num2str(plate_id) , '/'];
+
+%check parent directory exists and create output directory
+if ~exist(parent_dir, 'dir')
+	disp(['parent_dir does not exist!']);
+	return;
+elseif ~exist(out_dir, 'dir')
+	disp(['output directory created at ', out_dir]);
+	mkdir(out_dir);
+else
+	disp(['WARNING:  output directory already exists at ', out_dir]);
+	%return;
+end
+
+%get the plate
+plate = getPlates(session, plate_id);
+
+%check that there is only a single plate acquisition
+if(plate.copyPlateAcquisitions.size == 1)
+	disp('There is only one plate acquisition');
+else
+	disp('WARNING!! There is more than one plate acquisition');
+	return;
+end
+
+%define SQL to get all well and image data for a given plate
+sql = ['select well from Well as well '...
+'left outer join fetch well.plate as pt '...
+'left outer join fetch well.wellSamples as ws '...
+'left outer join fetch ws.plateAcquisition as pa '...
+'left outer join fetch ws.image as img '...
+'where well.plate.id = ', num2str(plate.getId.getValue)];
+
+%run the query
+wellList = session.getQueryService().findAllByQuery(sql, []);
+
+%number of wells
+wellList.size();
+
+%plate name - use any one of the wells to get the same value
+plate_name=wellList.get(0).getPlate.getName.getValue;
+
+
+%determine number of wells to export
+if(well_max < wellList.size)
+	n=well_max-1;
+else
+	n=wellList.size-1;
+end
+
+%iterate throuh wells
+for i = 0 : n
+	well = wellList.get(i); %get the well
+
+	%determine number of fov's to export
+	fov_count = well.copyWellSamples().size; %how many fields of view per well?
+	if(fov_max < fov_count)
+		m = fov_max - 1;
+	else
+		m = fov_count - 1;
+	end
+
+	disp(['Well ', num2str(i+1), ' of ', num2str(n+1), ': exporting ', num2str(m+1), ' fields of view']);
+	%iterate through fields of view
+	for j = 0 : m 
+		%get the image
+		img = well.getWellSample(j).getImage;
+		%make a filename
+		img_fn = [out_dir, 'R', num2str(well.getRow.getValue+1), '_C', num2str(well.getColumn.getValue+1), '_F', num2str(j+1), '_IMG', num2str(img.getId.getValue) , '.tif'];
+		disp(img_fn);
+		%export the image
+		exportImageAsOMETIFF(session, img, img_fn)
+	end
+end
+```
+
+The function can then be executed as follows:
+```{matlab}
+%Matlab script to extract image data from OMERO server by plate
+%for setup see http://www.openmicroscopy.org/site/support/omero4/developers/Matlab.html
+
+addpath('/path/to/omero.matlab')
+addpath('/path/to/function')
+
+%start client
+client = loadOmero()
+session=client.createSession()
+t = omeroKeepAlive(client); % Create a 60-second timer and starts it
+
+pd = '/path/to/test/dir'
+exportPlate(session, 2478, pd, 10, 2)  %10 wells and 2 fields of view from plate id 2478
+
+pd2 = '/path/to/full/dir'
+exportPlate(session, 2478, pd2, 1000, 1000)  %all wells and all fields of view		
+
+
+%REMEMBER TO TIDY UP!!
+delete(t)
+client.closeSession()
+clear client
+clear session
+
+```
+
+## Conclusions
+In this blog post we have developed a matlab function to export all images associated with a plate from the OMERO image repository into a destination directory.  A controller script can be easily set up to automate the export, and potentially we could iterate through plates associated with a screen as well.
+
+In the next blog we will set up an analysis algorithm to extract useful biological information that can be run on small numbers of images, before scaling this up in the following blog post to take full advantage of the HPC environment.
+
+

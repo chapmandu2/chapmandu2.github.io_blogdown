@@ -1,0 +1,59 @@
+---
+title: "RNAseq in preclinical drug discovery 1"
+description: "General considerations and exprimental design"
+author: "Phil Chapman"
+categories: ["R", "chemical biology", "NGS", "RNAseq"]
+date: 2016-12-07
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+In the summer, James Hadfield from the Cancer Research UK Cambridge Institute and author of the Core Genomics blog wrote an excellent **blog post** where he described experimental considerations when carrying out RNA-seq experiments.  He advocated generating 10-20M 50bp single end reads for a standard 'microarray substitute' differential gene expression experiment.  **Mick Watson** of Opinionomics then raised the findings from a paper published by his group (**Robert & Watson Genome Biology 2015**) that some genes couldn’t be accurately quantitated due to the issue of multi-mapping: regions of similarity between closely related genes just can't be differentiated between with shorter reads.  He felt that using short single end reads would only make this problem worse.  There then following a twitter discussion about the various considerations when designing RNA-seq experiments.  I came back to this topic after being invited to give a presentation to the Cambridge RNA club so I thought it would make an interesting blog post.  I'll post some more technical detail in a follow-up blog, here I'll just focus on the general principles.
+
+## Background
+I work for the **Drug Discovery Unit** at the **Cancer Research UK Manchester Institue**, and we use RNA-seq to characterise the biological activity in cancer models (such as cancer cell lines) of the novel compounds that our group develops **(eg James et al 2016, Newton et al 2016)**.  Two particularly useful outcomes are the identification of differentially expressed genes that can then be turned into a cell-based assay of compound activity, and a improving our understanding of the mechanism of action of novel compounds.  When we design our experiments there are a range of factors that we have to consider.  
+
+###Which compound?
+
+When we develop new drugs, the final compound that becomes a medicine is just one of many thousands of compounds that will be synthesised during the course of a drug discovery project.  Our chemists will make many different modifications to a structure to find the compound with the best combination of potency, selectivity, physical and metabolic properties.  Ideally we want to test not just a single inhibitor of a protein, but also an inactive but closely related compound as a negative control, as well as structurally unrelated compounds that also have activity.  This allows us to differentiate between ‘on-target’ (intentional) and ‘off-target’ (unintentional) effects of our compounds. 
+
+###Which dose? 
+
+How much compound should be dosed?  Ideally any effects we see should be dose dependent, so it can be useful to include multiple doses with the expectation of seeing a bigger effect with higher dose.  In addition, too high a dose is more likely to result in 'off-target' effects. 
+
+###Which timepoint? 
+
+At what timepoint should we measure gene expression?  Too soon after treatment and our compound may not have had time to take effect, too long and we may start seeing secondary effects - changes in gene expression due to apoptosis for example.  This can often be the most difficult thing to decide. 
+
+###Which cell line/model? 
+
+The cancer cell line to be used in the experiment (for example) is an important consideration.  We want to see the same effect in more than one model to have greater confidence in the biological effects that we see, or perhaps we expect our compound to only be active in a certain genetic background. 
+
+###How many replicates? 
+
+This depends on the amount of variability in the system and the expected effect size.  If we want to see small effects in a noisy model (mouse xenografts) then we will need more replicates than if we want to see large effects in a clean model (cell lines).  There have been some excellent papers considering this in detail (**Schurch & Barton RNA 2016**) 
+
+We then get to the RNA-seq specific technical aspects of how we do the sequencing: 
+
+###How many reads? 
+
+In RNAseq (unlike microarrays) we generate more reads for long, highly expressed genes than we do for short, low expressed genes.  This means that we will see more (poisson) variance and hence have less power to detect differential expression in the latter than the former.  So the question really becomes: how interested are we in genes with low expression, and how many reads are we prepared to pay for in order to accomplish this? 
+
+###What type of reads? 
+
+We can have a range of read lengths from 50 to 150bp (and longer) and also a choice of paired end or single end reads, with shorter single end reads being cheaper than longer paired end reads.  This impacts how effectively we can determine which gene a given read came from, and feeds into our choice of which alignment method to use.    Generally speaking longer reads can be aligned with more certainty, since there is more information, but the alignment problem becomes somewhat more difficult with longer reads since they tend to cross more exon-exon boundaries. 
+
+## Experimental design
+
+As you can see there are a LOT of things to consider, all of which have an impact on the price of the experiment, and there usually there is a compromise to be made within the envelope of a fixed budget. In terms of sample number, if you only looked at two cell lines treated with two compounds at two doses over two timepoints with a group size of 3 you, end up with 2x2x2x2x3=48 samples. Whilst it may be true that longer, paired end reads are 'better' than shorter, single end reads in an absolute sense, it then has to be argued whether this benefit outweighs other factors in a relative sense.  The choice becomes: should we include an extra timepoint or generate paired end reads?  I've certainly done experiments where an effect was only seen in the latest timepoint, and had that been excluded there just wouldn't have been an effect to detect in the remaining samples, however technically accurate the experiment might have been.  
+
+## Conclusion: Purism vs pragmatism
+
+The purist argument might be to always do the optimum experiment, but in my view this is unrealistic and it is usually the case that a project will be trying to obtain the maximum information it can from the budget it has available.  An over-engineered RNA-seq experiment to answer one question will simply use up resources that could have been better used to carry out another experiment to answer a different question - a classic case of opportunity cost (https://en.wikipedia.org/wiki/Opportunity_cost) .  Of course the converse is also true, and a flawed experimental design can render a very expensive experiment completely useless.  So, whilst methodological studies such as that by the Watson and Barton groups are extremely valuable to understand the difference between approaches and inform experimental design, they don’t provide an absolute answer applicable in all cases.  It is legitimate to make an informed choice to use an inferior method if it allows the overall aim of the experiment to be delivered more effectively.  We always do 75bp single end sequencing, because it is cheaper and so allows us to run bigger studies that cover more variables.  Ultimately the answer lies in having absolute clarity as to the aim of the experiment, and then designing it accordingly, which is why it is so important that lab-based and computational biologists collaborate from the very start of any project. 
+
+
+
+

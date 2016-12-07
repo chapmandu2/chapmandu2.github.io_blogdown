@@ -1,0 +1,62 @@
+---
+author: "Phil Chapman"
+categories: ["R", "Image analysis"]
+date: 2016-10-11
+title: "Analysing imaging data from a compound screen 1"
+description: "The problem and seeking a way forward"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+A cell based compound screen can be used to identify chemical start points for the development of new drugs.  The analyses of the image data from such screens is computationally challenging, and whilst commercial software is available, this series of posts describes the development of a workflow using open source image analysis software running on a 1000 core High Performance Computing system.  
+
+1.  [The problem and seeking a way forward](/2016-10-11-image-analysis-1)
+2.  [Exporting data from Columbus/Omero to linux](/2016-10-12-image-analysis-2)
+3.  [Analysing a single image using EBImage](/2016-10-13-image-analysis-3)
+4.  [Analysing many images using BatchJobs](/2016-10-21-image-analysis-4)
+5.  Analysing high dimensional data
+
+## Introduction to drug discovery screening
+
+One of the first steps in discovering a new drug is to carry out a hit-finding or High Throughput Screen against a gene or biological process of interest to identify compounds that can be used as starting points to develop a drug.  Conventionally this is a biochemical assay where the isolated enzyme is coupled to a reporter system that generates a detectable output (such as fluorescence) whose magnitude proportional to the activity of the enzyme.  If a compound inhibits the enzyme, then the enzyme's activity and the signal in the assay is reduced.  Such assays can be configured in 384 or 1056-well plate format which allows 10s or even 100s of thousands of compounds to be screened.
+
+## Biochemical vs cell-based assays
+
+It can often be challenging to devise a robust biochemical assay.  For example it may not be possible to produce isolated active protein, or the biochemical assay may not be representative of what happens in a living cell.  For these reasons, an alternative is a cell-based assay where cells themselves are manipulated such that they change or act in a detectable way when the gene of interest is inhibited.  An increasingly common way of doing this, enabled by the incredible reduction in the cost of digital imaging, is via high throughput microscopic imaging in tandem with fluorescently labelled antibodies.  A variety of cellular phenotypes can then be investigated from simply counting the number of cells, to following where two proteins co-localise or not.
+
+Our Institute recently invested in one of the world's first Perkin Elmer Opera Phenix machines which allows very high throughput and accurate imaging across multiple channels.  This means that several different proteins can be quantified at once in 384-well format.  The challenge then becomes: once we've generated all of these thousands of high resolution images, how do we analyse them?
+
+In this series of blog posts I will go into the detail of how we established an approach to do this data analysis, covering both technical details and strategic considerations.   
+
+## Developing a strategy
+###Assessing the situation
+
+At the outset it is important to do an overall assessment of the range of options available and which ones might be the most worth persuing. We have a sophisticated commercial software package called Columbus with a dedicated 32 core server and storage.  A number of the biologists had been trained on the software, and the Institue's core facility also provides excellent support.  Clearly this was the obvious option, but on investigation two issues emerged:
+
+* Despite dedicated hardware it took around 30 minutes to analyse a 384-well plate, and this assumed that no-one else in the Institute wanted to do any analysis!  Our screen of 15,000 compounds would require around 100 plates, so the analysis would require 2 full days of dedicated server time.
+* The output could be generated either per well or per cell  Assuming around 1000 cells per well, the output would be either a 384-row matrix or a 384,000-row matrix.  Whilst the per-well output could be easily managed in excel, the per-cell data would be more difficult.
+
+### Potential solutions
+Since the main issue is the size of the data, it seems that better tools are needed.  We are lucky to have a 1000 core High Performance Cluster (HPC), could we use this?  Simplistically a 1000 core system should be 30x faster than a 32-core system, bringing the analysis walltime down to a more acceptable 1-2 hours.
+
+### Issues to resolve
+At this stage we see a potential solution, but there are a two key issues to address:
+
+1. how do we get the data to the HPC?
+2. is there software that can do the analysis as well as Columbus that can take advantage of the HPC environment?
+
+Importantly, we want to work on these two issues in parallel.  There is no sense in completely resolving the data transfer issue if there is no suitable analysis software, and vice versa.  
+
+## Conclusion
+In conclusion, we seek to develop a scalable image analysis pipeline that can take advantage of the compute power of our HPC but deliver results as good as the commercial Columbus image analysis software.  The following blog posts in this series will focus on:
+
+* data transfer
+* analysing one image
+* analysing many images
+* exploring high dimensional data
+
+

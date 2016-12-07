@@ -1,0 +1,79 @@
+---
+author: "Phil Chapman"
+categories: ["R", "Image analysis"]
+date: 2016-10-11
+title: "Analysing imaging data from a compound screen 1"
+description: "The problem and seeking a way forward"
+---
+
+
+<!-- BLOGDOWN-BODY-BEFORE
+
+/BLOGDOWN-BODY-BEFORE -->
+
+<div id="background" class="section level2">
+<h2>Background</h2>
+<p>A cell based compound screen can be used to identify chemical start points for the development of new drugs. The analyses of the image data from such screens is computationally challenging, and whilst commercial software is available, this series of posts describes the development of a workflow using open source image analysis software running on a 1000 core High Performance Computing system.</p>
+<ol style="list-style-type: decimal">
+<li><a href="/2016-10-11-image-analysis-1">The problem and seeking a way forward</a></li>
+<li><a href="/2016-10-12-image-analysis-2">Exporting data from Columbus/Omero to linux</a></li>
+<li><a href="/2016-10-13-image-analysis-3">Analysing a single image using EBImage</a></li>
+<li><a href="/2016-10-21-image-analysis-4">Analysing many images using BatchJobs</a></li>
+<li>Analysing high dimensional data</li>
+</ol>
+</div>
+<div id="introduction-to-drug-discovery-screening" class="section level2">
+<h2>Introduction to drug discovery screening</h2>
+<p>One of the first steps in discovering a new drug is to carry out a hit-finding or High Throughput Screen against a gene or biological process of interest to identify compounds that can be used as starting points to develop a drug. Conventionally this is a biochemical assay where the isolated enzyme is coupled to a reporter system that generates a detectable output (such as fluorescence) whose magnitude proportional to the activity of the enzyme. If a compound inhibits the enzyme, then the enzyme’s activity and the signal in the assay is reduced. Such assays can be configured in 384 or 1056-well plate format which allows 10s or even 100s of thousands of compounds to be screened.</p>
+</div>
+<div id="biochemical-vs-cell-based-assays" class="section level2">
+<h2>Biochemical vs cell-based assays</h2>
+<p>It can often be challenging to devise a robust biochemical assay. For example it may not be possible to produce isolated active protein, or the biochemical assay may not be representative of what happens in a living cell. For these reasons, an alternative is a cell-based assay where cells themselves are manipulated such that they change or act in a detectable way when the gene of interest is inhibited. An increasingly common way of doing this, enabled by the incredible reduction in the cost of digital imaging, is via high throughput microscopic imaging in tandem with fluorescently labelled antibodies. A variety of cellular phenotypes can then be investigated from simply counting the number of cells, to following where two proteins co-localise or not.</p>
+<p>Our Institute recently invested in one of the world’s first Perkin Elmer Opera Phenix machines which allows very high throughput and accurate imaging across multiple channels. This means that several different proteins can be quantified at once in 384-well format. The challenge then becomes: once we’ve generated all of these thousands of high resolution images, how do we analyse them?</p>
+<p>In this series of blog posts I will go into the detail of how we established an approach to do this data analysis, covering both technical details and strategic considerations.</p>
+</div>
+<div id="developing-a-strategy" class="section level2">
+<h2>Developing a strategy</h2>
+<div id="assessing-the-situation" class="section level3">
+<h3>Assessing the situation</h3>
+<p>At the outset it is important to do an overall assessment of the range of options available and which ones might be the most worth persuing. We have a sophisticated commercial software package called Columbus with a dedicated 32 core server and storage. A number of the biologists had been trained on the software, and the Institue’s core facility also provides excellent support. Clearly this was the obvious option, but on investigation two issues emerged:</p>
+<ul>
+<li>Despite dedicated hardware it took around 30 minutes to analyse a 384-well plate, and this assumed that no-one else in the Institute wanted to do any analysis! Our screen of 15,000 compounds would require around 100 plates, so the analysis would require 2 full days of dedicated server time.</li>
+<li>The output could be generated either per well or per cell Assuming around 1000 cells per well, the output would be either a 384-row matrix or a 384,000-row matrix. Whilst the per-well output could be easily managed in excel, the per-cell data would be more difficult.</li>
+</ul>
+</div>
+<div id="potential-solutions" class="section level3">
+<h3>Potential solutions</h3>
+<p>Since the main issue is the size of the data, it seems that better tools are needed. We are lucky to have a 1000 core High Performance Cluster (HPC), could we use this? Simplistically a 1000 core system should be 30x faster than a 32-core system, bringing the analysis walltime down to a more acceptable 1-2 hours.</p>
+</div>
+<div id="issues-to-resolve" class="section level3">
+<h3>Issues to resolve</h3>
+<p>At this stage we see a potential solution, but there are a two key issues to address:</p>
+<ol style="list-style-type: decimal">
+<li>how do we get the data to the HPC?</li>
+<li>is there software that can do the analysis as well as Columbus that can take advantage of the HPC environment?</li>
+</ol>
+<p>Importantly, we want to work on these two issues in parallel. There is no sense in completely resolving the data transfer issue if there is no suitable analysis software, and vice versa.</p>
+</div>
+</div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>In conclusion, we seek to develop a scalable image analysis pipeline that can take advantage of the compute power of our HPC but deliver results as good as the commercial Columbus image analysis software. The following blog posts in this series will focus on:</p>
+<ul>
+<li>data transfer</li>
+<li>analysing one image</li>
+<li>analysing many images</li>
+<li>exploring high dimensional data</li>
+</ul>
+</div>
+
+
+
+<!-- BLOGDOWN-HEAD
+
+
+
+
+
+
+/BLOGDOWN-HEAD -->

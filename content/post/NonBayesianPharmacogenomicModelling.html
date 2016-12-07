@@ -1,0 +1,278 @@
+---
+title: "Non-bayesian pharmaogenomic modelling"
+description: "The beginning"
+author: "Phil Chapman"
+categories: ["R", "chemical biology"]
+date: 2016-11-25
+---
+
+
+<!-- BLOGDOWN-BODY-BEFORE
+
+/BLOGDOWN-BODY-BEFORE -->
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>In this example we do some very simple modelling using cancer cell line screening data and associated genetic data. The purpose of this example is to demonstrate how data can be extracted from PharmacoSet objects and then worked on.</p>
+</div>
+<div id="get-the-data" class="section level2">
+<h2>Get the data</h2>
+<p>PharmacoSet objects can be downloaded as follows:</p>
+<pre class="r"><code>#ccle_pset &lt;- downloadPSet(&#39;CCLE&#39;, saveDir=&#39;~/BigData/PSets/&#39;)
+#gdsc_pset &lt;- downloadPSet(&#39;GDSC&#39;, saveDir=&#39;~/BigData/PSets/&#39;)</code></pre>
+<p>And then loaded in the normal way:</p>
+<pre class="r"><code>load(&#39;~/BigData/PSets/GDSC.RData&#39;)</code></pre>
+</div>
+<div id="explore-the-pharmacoset-objects" class="section level2">
+<h2>Explore the PharmacoSet objects</h2>
+<p>Objects have a show method so calling the name of the object reveals lots of useful information about it.</p>
+<pre class="r"><code>GDSC</code></pre>
+<pre><code>## Name:  GDSC 
+## Date Created:  Wed Dec 30 10:44:21 2015 
+## Number of cell lines:  1124 
+## Number of drug compounds:  139 
+## RNA: 
+##  Dim:  11833 789 
+## CNV: 
+##  Dim:  24960 936 
+## Drug pertubation: 
+##  Please look at pertNumber(pSet) to determine number of experiments for each drug-cell combination.
+## Drug sensitivity: 
+##  Number of Experiments:  79903 
+##  Please look at sensNumber(pSet) to determine number of experiments for each drug-cell combination.</code></pre>
+<p>There are useful functions to show the elements of PharmacoSet object: drugs, cells and molecular data types:</p>
+<pre class="r"><code>drugNames(GDSC)[1:10] </code></pre>
+<pre><code>##  [1] &quot;Erlotinib&quot;    &quot;AICAR&quot;        &quot;Camptothecin&quot; &quot;Vinblastine&quot; 
+##  [5] &quot;Cisplatin&quot;    &quot;Cytarabine&quot;   &quot;Docetaxel&quot;    &quot;Methotrexate&quot;
+##  [9] &quot;ATRA&quot;         &quot;Gefitinib&quot;</code></pre>
+<pre class="r"><code>cellNames(GDSC)[1:10]</code></pre>
+<pre><code>##  [1] &quot;22RV1&quot;    &quot;23132-87&quot; &quot;380&quot;      &quot;5637&quot;     &quot;639-V&quot;    &quot;647-V&quot;   
+##  [7] &quot;697&quot;      &quot;769-P&quot;    &quot;786-0&quot;    &quot;8305C&quot;</code></pre>
+<pre class="r"><code>mDataNames(GDSC)</code></pre>
+<pre><code>## [1] &quot;rna&quot;      &quot;rna2&quot;     &quot;mutation&quot; &quot;fusion&quot;   &quot;cnv&quot;</code></pre>
+</div>
+<div id="dose-response-data" class="section level2">
+<h2>Dose response data</h2>
+<p>We can plot the dose response data for a cell line:</p>
+<pre class="r"><code>drugDoseResponseCurve(drug=&#39;Nutlin-3&#39;, cellline=&#39;697&#39;, pSets=GDSC, plot.type=&#39;Both&#39;)</code></pre>
+<p><img src="#####../content/post/NonBayesianPharmacogenomicModelling_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p>And get the sensitivity measure values for all cell lines for Nutlin-3 and Erlotinib:</p>
+<pre class="r"><code>sens_mat &lt;- summarizeSensitivityProfiles(GDSC, sensitivity.measure = &#39;ic50_published&#39;, drugs = c(&#39;Nutlin-3&#39;, &#39;Erlotinib&#39;), verbose = FALSE) %&gt;% t()
+sens_mat &lt;- 9-log10(sens_mat)
+dim(sens_mat)</code></pre>
+<pre><code>## [1] 1124    2</code></pre>
+<p>Unfortunately there isn’t a convenience function to extract the dose response data itself, but this can be done as follows:</p>
+<pre class="r"><code>#get the information about the curve of interest
+drug_profiles &lt;- GDSC@sensitivity$info %&gt;% 
+    tibble::rownames_to_column(&#39;curve_id&#39;) %&gt;%
+    dplyr::filter(drugid==&#39;Nutlin-3&#39;, cellid==&#39;697&#39;)
+drug_profiles</code></pre>
+<pre><code>##          curve_id cellid   drugid drug.name nbr.conc.tested min.Dose.uM
+## 1 drugid_1047_697    697 Nutlin-3  NUTLIN3A               9     0.03125
+##   max.Dose.uM duration_h
+## 1           8         72</code></pre>
+<pre class="r"><code>#the raw data is stored in a 3D matrix, can extract as follows:
+GDSC@sensitivity$raw[&quot;drugid_1047_697&quot;,,]</code></pre>
+<pre><code>##        Dose      Viability         
+## doses1 &quot;0.03125&quot; &quot;99.9083625051504&quot;
+## doses2 &quot;0.0625&quot;  &quot;110.360194300232&quot;
+## doses3 &quot;0.125&quot;   &quot;97.9893987166772&quot;
+## doses4 &quot;0.25&quot;    &quot;100.571670763227&quot;
+## doses5 &quot;0.5&quot;     &quot;91.7495404302393&quot;
+## doses6 &quot;1&quot;       &quot;87.6252737395088&quot;
+## doses7 &quot;2&quot;       &quot;56.7022780978287&quot;
+## doses8 &quot;4&quot;       &quot;14.4871092551858&quot;
+## doses9 &quot;8&quot;       &quot;4.04710864108274&quot;</code></pre>
+</div>
+<div id="molecular-profile-data" class="section level2">
+<h2>Molecular profile data</h2>
+<p>Feature names are symbols for the mutation data and a derivation of ensembl id’s for expression data. Gene name information can be obtained using EnsDb.Hsapiens.v75 package</p>
+<pre class="r"><code>gene_info &lt;- ensembldb::genes(EnsDb.Hsapiens.v75, filter=GenenameFilter(c(&#39;TP53&#39;, &#39;EGFR&#39;)), return.type=&#39;data.frame&#39;) %&gt;%
+    dplyr::select(gene_id, gene_name) %&gt;%
+    dplyr::mutate(probe_id=paste0(gene_id, &#39;_at&#39;))
+gene_info</code></pre>
+<pre><code>##           gene_id gene_name           probe_id
+## 1 ENSG00000141510      TP53 ENSG00000141510_at
+## 2 ENSG00000146648      EGFR ENSG00000146648_at</code></pre>
+<p>Get the mutatation and expression data for TP53 and EGFR:</p>
+<pre class="r"><code>genetic_mat &lt;- summarizeMolecularProfiles(GDSC, mDataType = &#39;mutation&#39;, features = gene_info$gene_name, summary.stat=&#39;and&#39;, verbose=FALSE) %&gt;% exprs() %&gt;% t()
+dim(genetic_mat)</code></pre>
+<pre><code>## [1] 1124    2</code></pre>
+<pre class="r"><code>affy_mat &lt;- summarizeMolecularProfiles(GDSC, mDataType = &#39;rna&#39;, features = gene_info$probe_id, summary.stat=&#39;first&#39;, verbose=FALSE) %&gt;% exprs() %&gt;% t()
+dim(affy_mat)</code></pre>
+<pre><code>## [1] 1124    2</code></pre>
+</div>
+<div id="integrated-data-analysis" class="section level2">
+<h2>Integrated data analysis</h2>
+<p>Combine data together and turn into a data frame</p>
+<pre class="r"><code>#sensitivity data 
+sens_df &lt;- sens_mat %&gt;% as.data.frame() %&gt;% tibble::rownames_to_column(&#39;cell_line&#39;)
+
+#mutation data
+colnames(genetic_mat) &lt;- paste0(colnames(genetic_mat), &#39;_mut&#39; )
+genetic_df &lt;- genetic_mat %&gt;% as.data.frame() %&gt;% tibble::rownames_to_column(&#39;cell_line&#39;)
+
+#affymetrix data
+colnames(affy_mat) &lt;- paste0(colnames(affy_mat), &#39;_affy&#39; )
+affy_df &lt;- affy_mat %&gt;% as.data.frame() %&gt;% tibble::rownames_to_column(&#39;cell_line&#39;)
+
+#combine into a single data frame
+combined_df &lt;- sens_df %&gt;% 
+    inner_join(genetic_df, by=&#39;cell_line&#39;) %&gt;% 
+    inner_join(affy_df, by=&#39;cell_line&#39;)
+
+combined_df %&gt;% tbl_df()</code></pre>
+<pre><code>## # A tibble: 1,124 × 7
+##    cell_line `Nutlin-3` Erlotinib TP53_mut EGFR_mut
+##        &lt;chr&gt;      &lt;dbl&gt;     &lt;dbl&gt;   &lt;fctr&gt;   &lt;fctr&gt;
+## 1      22RV1   7.892590       NaN        1        0
+## 2   23132-87   7.680031       NaN        0        0
+## 3        380        NaN       NaN       NA       NA
+## 4       5637   6.214938       NaN        1        0
+## 5      639-V   7.358565       NaN        1        0
+## 6      647-V   6.072949       NaN        1        0
+## 7        697   8.694393  8.576254        0        0
+## 8      769-P   7.176188       NaN        0        0
+## 9      786-0   6.995861       NaN        1        0
+## 10     8305C   6.225848       NaN        1        0
+## # ... with 1,114 more rows, and 2 more variables:
+## #   ENSG00000141510_at_affy &lt;dbl&gt;, ENSG00000146648_at_affy &lt;dbl&gt;</code></pre>
+<p>Now do some basic modelling. Nutlin-3 is more effective in TP53 wild type than mutant cell lines:</p>
+<pre class="r"><code>lm(`Nutlin-3`~TP53_mut, data=combined_df) %&gt;% summary()</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = `Nutlin-3` ~ TP53_mut, data = combined_df)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -1.84317 -0.45086 -0.04256  0.46663  2.12744 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)  7.69481    0.04444  173.16   &lt;2e-16 ***
+## TP53_mut1   -1.07415    0.05490  -19.56   &lt;2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.671 on 659 degrees of freedom
+##   (463 observations deleted due to missingness)
+## Multiple R-squared:  0.3674, Adjusted R-squared:  0.3665 
+## F-statistic: 382.8 on 1 and 659 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>ggplot(combined_df, aes(y=`Nutlin-3`, x=TP53_mut)) + geom_violin() + geom_point()</code></pre>
+<pre><code>## Warning: Removed 463 rows containing non-finite values (stat_ydensity).</code></pre>
+<pre><code>## Warning: Removed 463 rows containing missing values (geom_point).</code></pre>
+<p><img src="#####../content/post/NonBayesianPharmacogenomicModelling_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<p>Whereas Erlotinib is more effective in cell lines with high levels of expression of its target, EGFR.</p>
+<pre class="r"><code>lm(Erlotinib~ENSG00000146648_at_affy, data=combined_df) %&gt;% summary()</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = Erlotinib ~ ENSG00000146648_at_affy, data = combined_df)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -2.1594 -0.4591 -0.1275  0.3527  3.1857 
+## 
+## Coefficients:
+##                         Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)              4.99793    0.28864  17.315  &lt; 2e-16 ***
+## ENSG00000146648_at_affy  0.38049    0.05188   7.335 2.32e-12 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.6671 on 285 degrees of freedom
+##   (837 observations deleted due to missingness)
+## Multiple R-squared:  0.1588, Adjusted R-squared:  0.1558 
+## F-statistic:  53.8 on 1 and 285 DF,  p-value: 2.319e-12</code></pre>
+<pre class="r"><code>ggplot(combined_df, aes(y=Erlotinib, x=ENSG00000146648_at_affy)) + geom_point() + geom_smooth(method=&#39;lm&#39;)</code></pre>
+<pre><code>## Warning: Removed 837 rows containing non-finite values (stat_smooth).</code></pre>
+<pre><code>## Warning: Removed 837 rows containing missing values (geom_point).</code></pre>
+<p><img src="#####../content/post/NonBayesianPharmacogenomicModelling_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<p>The extension of this is to treat tissue as a covariate since some tissues have higher expression than others or have a higher level of mutation.</p>
+</div>
+<div id="the-bayesian-bit" class="section level2">
+<h2>The Bayesian bit</h2>
+<p>There are several sources of uncertainty that are not accounted for by using a simple linear model:</p>
+<ul>
+<li>How accurate is the sensitivity measure estimate and how much information are we losing by converting the dose response curve to a single value?<br />
+</li>
+<li>Are we able to measure resistant and sensitive cell lines equally accurately?</li>
+<li>How accurate is our classifcation of mutation status - might we have missed mutations in some cell lines, and erroneously called variants in others? How sure can we be of the functional signifance of a mutation?</li>
+</ul>
+<p>Could a Bayesian framework allow us to calculate a posterior distribution of effect size of a genetic feature on response to compound?</p>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session Info</h2>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>## R version 3.3.1 (2016-06-21)
+## Platform: x86_64-apple-darwin13.4.0 (64-bit)
+## Running under: OS X 10.11.4 (El Capitan)
+## 
+## locale:
+## [1] en_GB.UTF-8/en_GB.UTF-8/en_GB.UTF-8/C/en_GB.UTF-8/en_GB.UTF-8
+## 
+## attached base packages:
+## [1] stats4    parallel  methods   stats     graphics  grDevices utils    
+## [8] datasets  base     
+## 
+## other attached packages:
+##  [1] EnsDb.Hsapiens.v75_2.1.0 ensembldb_1.6.2         
+##  [3] GenomicFeatures_1.26.0   AnnotationDbi_1.36.0    
+##  [5] GenomicRanges_1.26.1     GenomeInfoDb_1.10.1     
+##  [7] IRanges_2.8.1            S4Vectors_0.12.1        
+##  [9] ggplot2_2.2.0            Biobase_2.34.0          
+## [11] BiocGenerics_0.20.0      dplyr_0.5.0             
+## [13] PharmacoGx_1.4.0        
+## 
+## loaded via a namespace (and not attached):
+##  [1] httr_1.2.1                    maps_3.1.1                   
+##  [3] AnnotationHub_2.6.4           gtools_3.5.0                 
+##  [5] sm_2.2-5.4                    shiny_0.14.2                 
+##  [7] assertthat_0.1                interactiveDisplayBase_1.12.0
+##  [9] Rsamtools_1.26.1              yaml_2.1.14                  
+## [11] slam_0.1-40                   lattice_0.20-34              
+## [13] RSQLite_1.1                   backports_1.0.4              
+## [15] limma_3.30.6                  downloader_0.4               
+## [17] digest_0.6.10                 RColorBrewer_1.1-2           
+## [19] XVector_0.14.0                colorspace_1.3-1             
+## [21] httpuv_1.3.3                  Matrix_1.2-7.1               
+## [23] htmltools_0.3.5               plyr_1.8.4                   
+## [25] lsa_0.73.1                    XML_3.98-1.5                 
+## [27] biomaRt_2.30.0                magicaxis_2.0.0              
+## [29] bookdown_0.3                  zlibbioc_1.20.0              
+## [31] xtable_1.8-2                  relations_0.6-6              
+## [33] scales_0.4.1                  RANN_2.5                     
+## [35] gdata_2.17.0                  BiocParallel_1.8.1           
+## [37] tibble_1.2                    SummarizedExperiment_1.4.0   
+## [39] lazyeval_0.2.0                mime_0.5                     
+## [41] magrittr_1.5                  memoise_1.0.0                
+## [43] evaluate_0.10                 SnowballC_0.5.1              
+## [45] MASS_7.3-45                   gplots_3.0.1                 
+## [47] BiocInstaller_1.24.0          blogdown_0.0.8               
+## [49] tools_3.3.1                   data.table_1.10.0            
+## [51] stringr_1.1.0                 munsell_0.4.3                
+## [53] cluster_2.0.5                 plotrix_3.6-3                
+## [55] Biostrings_2.42.1             caTools_1.17.1               
+## [57] grid_3.3.1                    RCurl_1.95-4.8               
+## [59] marray_1.52.0                 igraph_1.0.1                 
+## [61] celestial_1.3                 labeling_0.3                 
+## [63] bitops_1.0-6                  rmarkdown_1.2                
+## [65] gtable_0.2.0                  DBI_0.5-1                    
+## [67] sets_1.0-16                   R6_2.2.0                     
+## [69] GenomicAlignments_1.10.0      gridExtra_2.2.1              
+## [71] knitr_1.15.1                  rtracklayer_1.34.1           
+## [73] fastmatch_1.0-4               fgsea_1.0.2                  
+## [75] rprojroot_1.1                 KernSmooth_2.23-15           
+## [77] stringi_1.1.2                 Rcpp_0.12.8                  
+## [79] mapproj_1.2-4                 piano_1.14.2</code></pre>
+</div>
+
+
+
+<!-- BLOGDOWN-HEAD
+
+
+
+
+
+
+/BLOGDOWN-HEAD -->
