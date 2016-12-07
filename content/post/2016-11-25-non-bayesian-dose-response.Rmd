@@ -17,7 +17,7 @@ library(EnsDb.Hsapiens.v75)
 
 ## Introduction
 
-In this example we do some very simple modelling using cancer cell line screening data and associated genetic data.  The purpose of this example is to demonstrate how data can be extracted from PharmacoSet objects and then worked on.
+In this example we do some very simple modelling using cancer cell line screening data and associated genetic data.  The purpose of this example is to demonstrate how data can be extracted from PharmacoSet objects and then be used to develop linear models of dose response vs genetic features.  However, there are uncertainties around IC50 estimation and cell line genetic feature classification (and meaning) which aren't carried through into the modelling.
 
 ## Get the data
 

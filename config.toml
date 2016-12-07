@@ -53,10 +53,10 @@ googleAnalytics = ""
     #src       = "/img/main/logo.jpg"
     # modify your picture in the shape of a circle or
     # future imperfect's hexagonal shape
-    circle    = false
-    imperfect = true
-    width     = ""
-    alt       = "Hugo Future Imperfect"
+    #circle    = false
+    #imperfect = true
+    #width     = ""
+    #alt       = "Hugo Future Imperfect"
 
 # Adjust the amount of recent posts on the sidebar.
 # This is optional. The default value 5 will be used

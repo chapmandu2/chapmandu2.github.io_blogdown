@@ -13,7 +13,7 @@ date: 2016-11-25
 
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
-<p>In this example we do some very simple modelling using cancer cell line screening data and associated genetic data. The purpose of this example is to demonstrate how data can be extracted from PharmacoSet objects and then worked on.</p>
+<p>In this example we do some very simple modelling using cancer cell line screening data and associated genetic data. The purpose of this example is to demonstrate how data can be extracted from PharmacoSet objects and then be used to develop linear models of dose response vs genetic features. However, there are uncertainties around IC50 estimation and cell line genetic feature classification (and meaning) which aren’t carried through into the modelling.</p>
 </div>
 <div id="get-the-data" class="section level2">
 <h2>Get the data</h2>
@@ -55,7 +55,7 @@ date: 2016-11-25
 <h2>Dose response data</h2>
 <p>We can plot the dose response data for a cell line:</p>
 <pre class="r"><code>drugDoseResponseCurve(drug=&#39;Nutlin-3&#39;, cellline=&#39;697&#39;, pSets=GDSC, plot.type=&#39;Both&#39;)</code></pre>
-<p><img src="#####../content/post/NonBayesianPharmacogenomicModelling_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p><img src="#####../content/post/2016-11-25-non-bayesian-dose-response_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
 <p>And get the sensitivity measure values for all cell lines for Nutlin-3 and Erlotinib:</p>
 <pre class="r"><code>sens_mat &lt;- summarizeSensitivityProfiles(GDSC, sensitivity.measure = &#39;ic50_published&#39;, drugs = c(&#39;Nutlin-3&#39;, &#39;Erlotinib&#39;), verbose = FALSE) %&gt;% t()
 sens_mat &lt;- 9-log10(sens_mat)
@@ -161,7 +161,7 @@ combined_df %&gt;% tbl_df()</code></pre>
 <pre class="r"><code>ggplot(combined_df, aes(y=`Nutlin-3`, x=TP53_mut)) + geom_violin() + geom_point()</code></pre>
 <pre><code>## Warning: Removed 463 rows containing non-finite values (stat_ydensity).</code></pre>
 <pre><code>## Warning: Removed 463 rows containing missing values (geom_point).</code></pre>
-<p><img src="#####../content/post/NonBayesianPharmacogenomicModelling_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<p><img src="#####../content/post/2016-11-25-non-bayesian-dose-response_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
 <p>Whereas Erlotinib is more effective in cell lines with high levels of expression of its target, EGFR.</p>
 <pre class="r"><code>lm(Erlotinib~ENSG00000146648_at_affy, data=combined_df) %&gt;% summary()</code></pre>
 <pre><code>## 
@@ -186,7 +186,7 @@ combined_df %&gt;% tbl_df()</code></pre>
 <pre class="r"><code>ggplot(combined_df, aes(y=Erlotinib, x=ENSG00000146648_at_affy)) + geom_point() + geom_smooth(method=&#39;lm&#39;)</code></pre>
 <pre><code>## Warning: Removed 837 rows containing non-finite values (stat_smooth).</code></pre>
 <pre><code>## Warning: Removed 837 rows containing missing values (geom_point).</code></pre>
-<p><img src="#####../content/post/NonBayesianPharmacogenomicModelling_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<p><img src="#####../content/post/2016-11-25-non-bayesian-dose-response_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
 <p>The extension of this is to treat tissue as a covariate since some tissues have higher expression than others or have a higher level of mutation.</p>
 </div>
 <div id="the-bayesian-bit" class="section level2">
