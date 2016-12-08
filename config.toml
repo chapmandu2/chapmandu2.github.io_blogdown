@@ -5,7 +5,7 @@ title = "Phil Chapman's Blog"
 theme = "hugo-future-imperfect"
 preserveTaxonomyNames = true
 paginate = 10
-disqusShortname = "shortname"
+disqusShortname = "chapmandu2"
 googleAnalytics = ""
 
 [params]
