@@ -1,0 +1,41 @@
+---
+author: "Phil Chapman"
+categories: ["R", "shiny", "RStudio::conf 2016", "tidyverse"]
+date: 2017-01-13
+description: "discovering the tidyverse"
+title: "RStudio::conf Highlights Day 3"
+---
+
+## Introduction
+I've been lucky enough to spend the last few days in sunny Florida at the [RStudio::conf 2017](https://www.rstudio.com/conference/).  This was made possible by RStudio's very generous academic discount scheme, so thanks to them for that! Whilst I've been [tweeting](https://twitter.com/search?f=tweets&vertical=default&q=chapmandu2%20%23rstudioconf&src=typd) a few of the key moments as they happened this series of posts expands further on these tweets and gives links to further information.
+
+- [RStudio::conf Highlights Days 1-2: shiny workshop](/post/2017-01-12-rstudio-conference-highlights-1/)
+- [RStudio::conf Highlights Day 3: the tidyverse](/post/2017-01-13-rstudio-conference-highlights-2/)
+
+## The tidyverse
+Inevitably a big theme of the first day was the [tidyverse](http://www.tidyverse.org) and Hadley Wickham kicked the conference off with an overview of his latest thinking and developments in the suite of packages.  Hadley seems to be really driving the concept on now that he's successfully convinced the R community to stop embarassing him by referring to it as the Hadleyverse. I like his 'pit of success' analogy - make it easy to do things well - although Stephen Turner raised an issue that I come across on a daily basis which is the messiness that can happen when trying to combine tidy approaches withing the [Bioconductor](http://www.bioconductor.org) ecosystem of packages.  
+
+Next up was Charlotte Wickham, Hadley's sister, giving a tutorial on the use of the [purrr](https://cran.r-project.org/web/packages/purrr/index.html) package.  This package provides some great functional programming tools for working with lists that provide an alternative to working with `apply` in base R.  In particular the `map` family of functions allows iterating through a list with the guarantee that the result will be of a particular type.  The `walk` functions do not return anything so are used for their side-effects - ie plotting or writing to files.  
+
+In the afternoon [Bob Rudis](https://twitter.com/hrbrmstr) gave a [brilliant talk](https://github.com/hrbrmstr/rstudioconf2017) on writing readable code using pipes which really helped cement some concepts in my head, before [Jenny Bryan](https://twitter.com/JennyBryan) followed on with an equally excellent talk discussing the use of list-cols in tibbles.  The idea here is that just as data frames keep vectors of data together, they can also keep lists of data together.  So a row could, for example, contain some data as a nested data frame, a model, an r-squared value, and a plot.  This avoids the use of disconnected lists in an analysis which, as in Excel, can fall prey to unintended mixing up.  In particular, the combination of `purrr::map` and `dplyr::mutate` can allow list-cols to be manipulated in situ in very powerful ways.  I'm using this approach to store various Bioconductor objects in data frames to make my analysis code more concise with some success.  Jenny's slides were based on a [tutorial on GitHub](http://jennybc.github.io/purrr-tutorial/) and Hadley described the principles in this [YouTube video](https://www.youtube.com/watch?v=rz3_FDVt9eg) and a chapter in [R for Data Science](http://r4ds.had.co.nz/many-models.html).
+
+## Getting data into R
+Jim Hester from RStudio presented a completely rewritten version of the RODBC package called  [odbc](https://github.com/rstats-db/odbc) which is faster, more robust and more secure.   It includes drivers for a variety of databases and will be really helpful for anyone wanting to interact with databases in their analysis or shiny apps.  In addition, SQL chunks can now be included in RMarkdown documents which are then executed and the result depicted as a data table when the RMarkdown is rendered.  Finally the [pool](https://github.com/rstudio/pool) package is also being developed which helps manage database connections better.
+
+Amanda Gadrow, also from Rstudio, presented some of her work [analysing data from web API's](https://github.com/ajmcoqui/webAPIsR) using `httr`, `jsonlite`, `dplyr`, `ggplot2` etc.  The primary motivation was to analyse RStudio's support tickets, apparently they get more in the afternoon USA eastern time which means in the UK we should get an instant response, and that RStudio's next support hire will be on the US West Coast!
+
+Karthik Ram from ropensci.org also presented some useful packages in a [lightning talk](http://inundata.org/talks/rc17/): magick for image processing, hunspell for spell checking, and tesseract for OCR. 
+
+## Miscellaneous
+I also enjoyed [Julia Silge's](https://twitter.com/juliasilge) presentation on the [tidytext](http://www.tidytextmining.org) package whose uses, amongst other things, included an analysis of Donald Trump's tweets!  The basic concept is to generate a tidy data frame with one row per word for a dataset whilst retaining contextual information (chapter, line, book).  Examples included sentiment analysis of Jane Austen, and also [TF-IDF](https://en.wikipedia.org/wiki/Tf%E2%80%93idf) analysis of some NASA datasets.  It would be interesting to try this package for text mining biomedical literature.
+
+Meanwhile Jonathan Sidi presented a short talk on [ggedit](https://github.com/yonicd/ggedit) which allows interactive editing of ggplots, before returning the code to make the new plot.  This looks like a really useful tool for both new and advanced users of ggplot2 - there's an article with videos [here](https://t.co/m7VlmjI5SV).  
+
+Finally, Chester Ismay [talked about](http://ismayc.github.io/rsconf/slides.html) how he has developed [teaching materials](http://moderndive.com/) for introductory stats using bookdown, shiny and the tidyverse.  Even now stats is taught with calculators and worksheets of t-distributions and Z-scores, so using R both made the course more interesting for students, and also gave them experience in programming.
+
+## Conclusion
+Having spent the previous 2 days in a shiny workshop I opted to avoid the shiny talks today, but there was a lot of buzz coming out of those sessions especially about [RStudio Connect](https://www.rstudio.com/products/connect/) and the [shinytest](https://github.com/rstudio/shinytest) package for testing shiny apps.  RStudio have recorded all of the sessions so I'm looking forward to watching what I've missed when it's available! Tomorrow I'm looking forward to the RMarkdown sessions, and hoping that blogdown will get a mention!!
+
+
+
+
