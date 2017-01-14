@@ -1,0 +1,67 @@
+---
+author: "Phil Chapman"
+categories: ["R", "shiny", "RStudio::conf 2016"]
+date: 2017-01-12
+description: "shiny workshop"
+title: "RStudio::conf Highlights Days 1-2"
+---
+
+## Introduction
+I've been lucky enough to spend the last 2 days in sunny Florida at the [RStudio::conf 2017](https://www.rstudio.com/conference/).  This was made possible by RStudio's very generous academic discount scheme, so thanks to them for that! Whilst I've been [tweeting](https://twitter.com/search?f=tweets&vertical=default&q=chapmandu2%20%23rstudioconf&src=typd) a few of the key moments as they happened this post expands further on these tweets and gives links to further information.
+
+## Shiny
+The first two days was the Intermediate Shiny Workshop run by [Joe Cheng](https://twitter.com/jcheng) - creator of shiny.  The slides and examples from the workshop are [available on github](https://github.com/jcheng5/rstudio2017-shiny-workshop) and are definitely worth a look.  It's impossible to do any sort of justice to what was covered in a brief blog post but here are some of my key take home points.
+
+### Reactivity graphs
+Reactivity is a key concept to understand in shiny.  Joe advised us to watch his [talks from the 2016 Shiny Dev Conference](https://www.rstudio.com/resources/webinars/shiny-developer-conference/) for more information but one really useful feature we learnt about was the ability to view reactivity graphs while the app is running.  This allows the shiny developer to really see the sequence of events and links between the various components of the shiny app. To do this set `options(shiny.reactlog=TRUE)` before running your app, then hit Command-F3 on the mac.  See `?showReactLog` for more information.
+
+### Events and reactives
+The concept of clicking on buttons (event) to update shiny apps is fundamental, but the innards of shiny and how to do this has changed a bit.  There are now `observeEvent` and `eventReactive` functions which make this much simpler.  In brief the difference is that you use `observeEvent` when you want something to be *done* when an event occurs, whereas you use  `eventReactive` when you want something to be *calculated*.  Want to write out a csv, use `observeEvent`, want to filter a data frame, use `eventReactive`.  Crucially this replaces this code:
+
+```{r eval=FALSE}
+observe({
+  # Take a reactive dependency on input$save_button
+  input$save_button
+  isolate({
+    write.csv(movies_subset(), "movies.csv")
+  })
+})
+```
+with this:
+```{r eval=FALSE}
+observeEvent(input$save_button, {
+  write.csv(movies_subset(), "movies.csv")
+})
+```
+
+
+### reactiveValues
+`reactiveValues` are something you should only rarely need to use according to Joe, and this is most often when you need to preserve the history of the state of the shiny app.  The best example of this was a simple app that incremented or decremented a value when a button was clicked.
+
+### Checking preconditions with req
+`req` is an incredibly useful little function that is a bit like `stopifnot` but plays more nicely with shinyapps.  Rather than getting an ugly error message, a NULL is returned and downstream components of the shiny app are told not to run either.  A really useful application of this is a shiny app that requires a file to be uploaded.  `req` can be used to stop the shiny app from doing anything until there is some data to work from.
+
+### invalidateLater, reactivePoll, reactiveFileReader
+These functions allow time or changes to datasources to be used as reactives.  `invalidateLater` causes a reactive to invalidate itself automatically after a certain time period, and so can be used to automatically update data at set intervals.  `reactivePoll` uses a check function to monitor a data source (eg the length of a database table) and update itself when the data changes. `reactiveFileReader` is a specific case of `reactivePoll` which can monitor the timestamps of files for changes.
+
+### Modules
+We spent a very challenging afternoon on modules, but I ended up being convinced by their utilty.  The problem in shiny is that UI and server components rely on uniquely named HTML elements, and so using a normal function to package up a commonly used bit of code for re-use risks inadvertantly using the same id as another element.  To circumvent this modules are pairs of ui and server code which are constructed in such a way that they have their own namespace.  This approach reduces duplication of code and makes shiny apps more streamlined and robust.  _Modules are functions that are UI aware_.
+
+
+### htmltools::browsable
+This is a useful little function which helps check out and debug elements of UI.  Use as follows: `htmltools::browsable(my_app_ui)`.
+
+### debounce and throttle
+These functions can be used to prevent apps from updating too frequently either.  `throttle` creates a reactive that updates no more than every _N_ seconds, whereas `debounce` creates a reactive that updates once an input has stopped updating for at least _N_ seconds.
+
+## Conclusion
+Whilst RStudio do a great job of recording webinars and writing fantastic documentation, hearing personally from shiny's creator Joe Cheng and sitting in a room full of shiny developers was a great experience! 
+
+### Footnote on this blog
+I've recently moved my blog over to Yihui Xie's [blogdown](https://github.com/rstudio/blogdown) package which is fantastic if you want to write blogs in RMarkdown and joins the family of RMarkdown packages including packagedown, bookdown etc.  I do still need to iron out a few glitches and choose a theme, so unfortunately Disqus isn't working just now - sorry!! 
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-baseurl = "/"
+baseurl = "https://chapmandu2.github.io/"
 relativeurls = true
 languageCode = "en-us"
 title = "Phil Chapman's Blog"
