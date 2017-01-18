@@ -11,6 +11,7 @@ I've been lucky enough to spend the last few days in sunny Florida at the [RStud
 
 - [RStudio::conf Highlights Days 1-2: shiny workshop](/post/2017-01-12-rstudio-conference-highlights-1/)
 - [RStudio::conf Highlights Day 3: the tidyverse](/post/2017-01-13-rstudio-conference-highlights-2/)
+- [RStudio::conf Highlights Day 3: the tidyverse](/post/2017-01-14-rstudio-conference-highlights-3/)
 
 ## Shiny
 The first two days was the Intermediate Shiny Workshop run by [Joe Cheng](https://twitter.com/jcheng) - creator of shiny.  The slides and examples from the workshop are [available on github](https://github.com/jcheng5/rstudio2017-shiny-workshop) and are definitely worth a look.  It's impossible to do any sort of justice to what was covered in a brief blog post but here are some of my key take home points.

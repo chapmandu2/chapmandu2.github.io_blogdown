@@ -1,0 +1,69 @@
+---
+author: "Phil Chapman"
+categories: ["R", "shiny", "RStudio::conf 2016", "rmarkdown"]
+date: 2017-01-14
+description: "R markdown in depth!"
+title: "RStudio::conf Highlights Day 4"
+---
+
+
+<!-- BLOGDOWN-BODY-BEFORE
+
+/BLOGDOWN-BODY-BEFORE -->
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>I’ve been lucky enough to spend the last few days in sunny Florida at the <a href="https://www.rstudio.com/conference/">RStudio::conf 2017</a>. This was made possible by RStudio’s very generous academic discount scheme, so thanks to them for that! Whilst I’ve been <a href="https://twitter.com/search?f=tweets&amp;vertical=default&amp;q=chapmandu2%20%23rstudioconf&amp;src=typd">tweeting</a> a few of the key moments as they happened this series of posts expands further on these tweets and gives links to further information.</p>
+<ul>
+<li><a href="/post/2017-01-12-rstudio-conference-highlights-1/">RStudio::conf Highlights Days 1-2: shiny workshop</a></li>
+<li><a href="/post/2017-01-13-rstudio-conference-highlights-2/">RStudio::conf Highlights Day 3: the tidyverse</a></li>
+<li><a href="/post/2017-01-14-rstudio-conference-highlights-3/">RStudio::conf Highlights Day 3: the tidyverse</a></li>
+</ul>
+</div>
+<div id="applications-of-r-markdown" class="section level2">
+<h2>Applications of R Markdown</h2>
+<p>Much of my day was spent listening to Yihue Xie talking us through an <a href="https://slides.yihui.name/2017-rstudio-conf-rmarkdown-Yihui-Xie.html#1">Advanced R Markdown tutorial</a> as well as two conference presentations, one of which was on <a href="http://github.com/rstudio/blogdown/">blogdown</a> which I was excited about since it’s what I used to create this blog and has only been around a few months.</p>
+<p>In his <a href="https://slides.yihui.name/2017-rstudio-conf-blogdown-Yihui-Xie.html#1">blogdown talk</a> Yihue described an R Markdown based blogging package based on <a href="https://gohugo.io/">Hugo</a>, a fast and flexible static HTML page generator. The advantage of this approach is that it makes hosting very easy since nothing is dynamic, and that the user can visualise exactly what the website will look like locally. Interestingly it also includes some of the features of bookdown for captioning figures and writing math formulae. There are many different themes available for Hugo which can be easily modified for use with blogdown (documentation pending!).</p>
+<p>The advanced R Markdown talk was a bit too advanced for me but did help to cement some core concepts in my head. Firstly was the R Markdown workflow: essentially R markdown is converted to markdown by knitr, and this markdown is the converted to any number of formats by the pandoc software. There are a variety of output formats eg <code>html_document()</code> which essentially generates a list of parameters both for knitr and pandoc. These parameters can be customised either in the function call, or in the YAML header. Additional customisation is available through providing additional css code, or by writing user defined output format functions.</p>
+<p>Yihue then discussed some <a href="https://slides.yihui.name/2017-rstudio-conf-ext-rmd-Yihui-Xie.html#1">packages based on rmarkdown</a> including rticles for creating pdf articles in journal specific format, tufte to create articles based on the style of Edward Tufte’s books, bookdown for writing books including Hadley’s R for Data Science, and xaringan for creating HTML5 presentations. All of these packages really increase my motivation for using R Markdown more extensively in my own work.</p>
+<p>Finally Jonathan McPherson presented some detail on R Markdown Notebooks which provide an improved workflow for analysts using R markdown since the entire analysis doesn’t have to be rendered from scratch every time but can be rendered in chunks, and also allow code to be extracted from the document from the output html. I’m still a little unsure how well this will work for more complex analyses, but certainly the ability to combine analysis documentation and code in a single file is very attractive.</p>
+</div>
+<div id="stories-and-opinions" class="section level2">
+<h2>Stories and opinions</h2>
+<p>In his keynote <a href="https://twitter.com/andrewflowers">Andrew Flowers</a>, previously of <a href="https://fivethirtyeight.com/">FiveThirtyEight</a>, described data journalism and the six types of data stories:</p>
+<ul>
+<li>Novelty: analysis of new datasets eg Uber vs taxis in NYC</li>
+<li>Outlier: focus on a surprising result eg most valuable sportspeople</li>
+<li>Archetype: story about the most typical thing eg common names in America</li>
+<li>Trends: changes over time eg deaths from terrorism</li>
+<li>Debunking: attacking a misconception</li>
+<li>Forecast: election results</li>
+</ul>
+<p>For each story type Andrew highlighted the pitfalls and potential solutions. For example, the pitfal of a trend story is variance, where an apparent trend is just noise. The solution is to be conservative and explore variance correctly. Interestingly as well as the <a href="https://github.com/fivethirtyeight">FiveThirtyEight GitHub repo</a> containing data and code, there is now also a <a href="https://cran.r-project.org/package=fivethirtyeight">FiveThirtyEight R package</a> containing the curated data.</p>
+<p>Switching gears <a href="https://twitter.com/hspter">Hilary Parker</a> discussed opinionated data analysis and the concept of <a href="https://codeascraft.com/2012/05/22/blameless-postmortems/">blameless post mortems</a>. The idea here is that we might have opinions on the best way to do data analysis, but how do we encourage best practice in a positive way rather than just beat people with a stick.</p>
+</div>
+<div id="qa-session" class="section level2">
+<h2>Q&amp;A Session</h2>
+<p>Finally there was a Q&amp;A session with JJ Allaire, <a href="https://twitter.com/hadleywickham">Hadley Wickham</a> and <a href="https://twitter.com/hadleywickham">Joe Cheng</a> discussing various topics in the R and data science universe. There was too much covered to present here but what struck me was how committed and enthusiasic the panellists were to helping people do great data science and how the medium of open source software really encouraged this since open source software is not dependent on one company.</p>
+</div>
+<div id="links-to-other-summaries" class="section level2">
+<h2>Links to other summaries</h2>
+<ul>
+<li><a href="https://www.rstudio.com/conference/">RStudio conference page where recordings will appear</a></li>
+<li><a href="http://www.computerworld.com/article/3157004/data-analytics/best-tips-and-takeaways-from-rstudio-conference.html">Computerworld best tips and tricks</a></li>
+<li><a href="https://github.com/kbroman/RStudioConf2017Slides">KBroman github repo of slide links</a></li>
+<li><a href="http://www.gettinggeneticsdone.com/2017/01/rstudio-conference-2017-recap.html">Getting genetics done blog summary</a></li>
+</ul>
+</div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>RStudio put on a terrific conference with a good balance of tutorial/workshop and information. My metric of a conference like this is how much of what I learnt could I have learnt just by staying at home and working through tutorials and blog posts myself, and I definitely learnt a lot more. There is no substitute for being able to interact with and ask questions of the creators of the software that I use on a daily basis, as well as talking to fellow users about common experiences. It also struck me how different the conference was to user group meetings of commercial software, which seems far more about trying to sell you something than helping you to get the most out of what’s available. Thanks RStudio!!</p>
+</div>
+
+
+<!-- BLOGDOWN-HEAD
+
+
+
+
+/BLOGDOWN-HEAD -->

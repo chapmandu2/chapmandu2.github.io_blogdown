@@ -11,6 +11,7 @@ I've been lucky enough to spend the last few days in sunny Florida at the [RStud
 
 - [RStudio::conf Highlights Days 1-2: shiny workshop](/post/2017-01-12-rstudio-conference-highlights-1/)
 - [RStudio::conf Highlights Day 3: the tidyverse](/post/2017-01-13-rstudio-conference-highlights-2/)
+- [RStudio::conf Highlights Day 3: the tidyverse](/post/2017-01-14-rstudio-conference-highlights-3/)
 
 ## The tidyverse
 Inevitably a big theme of the first day was the [tidyverse](http://www.tidyverse.org) and Hadley Wickham kicked the conference off with an overview of his latest thinking and developments in the suite of packages.  Hadley seems to be really driving the concept on now that he's successfully convinced the R community to stop embarassing him by referring to it as the Hadleyverse. I like his 'pit of success' analogy - make it easy to do things well - although Stephen Turner raised an issue that I come across on a daily basis which is the messiness that can happen when trying to combine tidy approaches withing the [Bioconductor](http://www.bioconductor.org) ecosystem of packages.  
