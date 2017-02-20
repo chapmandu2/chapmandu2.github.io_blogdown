@@ -5,8 +5,8 @@ title = "Phil Chapman's Blog"
 theme = "hugo-future-imperfect"
 preserveTaxonomyNames = true
 paginate = 10
-disqusShortname = "chapmandu2"
-googleAnalytics = ""
+# disqusShortname = ""
+# googleAnalytics = ""
 
 [params]
     # Sets the meta tag description, usually reserved for the main page

@@ -6,11 +6,11 @@ description: "The power of list-cols in parameterising analyses"
 title: "Bioinformatics in the Tidyverse"
 ---
 
-# Introduction
-This is a blog post to expand on a talk I gave at the Manchester R Users Group on 21st February 2017.  In it I give a brief overview of the tidyverse and its core concepts, before going on to discuss how the same concepts can be applied to bioinformatics analysis using Bioconductor classes and packages.
+## Introduction
+This is a blog post to expand on a talk I gave at the [Manchester R Users Group](http://www.rmanchester.org/) on 21st February 2017.  In it I give a brief overview of the [tidyverse](http://tidyverse.org/) and its core concepts, before going on to discuss how the same concepts can be applied to bioinformatics analysis using [Bioconductor](http://bioconductor.org/) classes and packages.
 
-# What is the tidyverse?
-The tidyverse is a suite of tools primarily developed by Hadley Wickham LINK and collaborators at RStudio LINK.  The suite of packages can be conveniently installed as follows:
+## What is the tidyverse?
+The tidyverse is a suite of tools primarily developed by [Hadley Wickham](https://twitter.com/hadleywickham)  and collaborators at [RStudio](http://rstudio.com/).  The suite of packages can be conveniently installed as follows:
 
 ```{r eval=FALSE}
 install.packages('tidyverse')
@@ -18,14 +18,15 @@ install.packages('tidyverse')
 
 There are many talks and resources that go into much greater depth than I do here including:
 
-- Managing many models talk on YouTube by Hadley Wickham LINK
-- R for Data Science book LINK
-- Tutorials and presentations from RStudio::conf 2017 LINK
-- Webinars on RStudio website LINK
+- [Managing many models](https://www.youtube.com/watch?v=rz3_FDVt9eg) talk on YouTube by Hadley Wickham 
+- [R for Data Science](http://r4ds.had.co.nz/) book and website
+- Recorded tutorials and presentations from [RStudio::conf 2017](https://www.rstudio.com/conference/)
+- [Webinars](https://www.rstudio.com/resources/webinars/) on RStudio website 
+- [DataCamp](http://www.datacamp.com/) courses on dplyr and the tidyverse
 
-# Key concepts in the tidyverse
-## Tidy data
-They key concept of the tidyverse is that of tidy data.  If you're from a database background then think of this as normalised data.  For example, the table below is NOT tidy data since the year variable is encoded as a column name:
+## Key concepts in the tidyverse
+### Tidy data
+They key concept of the tidyverse is that of [tidy data](http://r4ds.had.co.nz/tidy-data.html).  If you're from a database background then think of this as normalised data.  For example, the table below is NOT tidy data since the year variable is encoded as a column name:
 
 ```{r warning=FALSE, message=FALSE}
 library(tidyverse)
@@ -39,9 +40,9 @@ df <- gather(table4a, year, cases, -country)
 df
 ```
 
-## Tibbles
+### Tibbles
 
-Tibbles are an alternative to the data frame.  The key differences are:
+[Tibbles](http://r4ds.had.co.nz/tibbles.html) are an alternative to the data frame.  The key differences are:
 
 - Subsetting a tibble will always produce another tibble.
 - A tibble will only print to screen - no more pages of output...
@@ -53,11 +54,11 @@ library(gapminder)
 gapminder
 ```
 
-## dplyr and the pipe - %>%
+### dplyr and the pipe - %>%
 
 The `dplyr` package provides an intuitive way of manipulating data frames that will come naturally to people from a database background who are used to SQL.  Furthermore, the pipe operator allows function calls to be strung together sequentially rather than nested which improves readability.  For example, the statements below:
 
-```{r}
+```{r eval=FALSE}
 # base r
 gapminder[gapminder$country=='China', c('country', 'continent', 'year', 'lifeExp')]
 
@@ -68,14 +69,16 @@ dplyr::select(dplyr::filter(gapminder, country=='China'), country, continent, ye
 Give the same output as this:
 ```{r}
 # pipe and dplyr
-gapminder %>% dplyr::filter(country=='China') %>% dplyr::select(country, continent, year, lifeExp)
+gapminder %>% 
+    dplyr::filter(country=='China') %>% 
+    dplyr::select(country, continent, year, lifeExp)
 ```
 
-The RStudio Data Wrangling cheatsheet LINK provides a useful resource for getting to know dplyr.
+The [RStudio Data Wrangling cheatsheet](https://www.rstudio.com/resources/cheatsheets/) provides a useful resource for getting to know dplyr.
 
-## purrr and its map function
+### purrr and its map function
 
-The purrr package provides a number of functions to make R more consistent and programming friendly than the equivalent base R functions.  At first it's `map` function seems like a reimplementation of `apply`:
+The `purrr` package provides a number of functions to make R more consistent and programming friendly than the equivalent base R functions.  At first it's `map` function seems like a reimplementation of `apply`:
 
 ```{r}
 map(c(4, 9, 16), sqrt)
@@ -88,22 +91,22 @@ map_dbl(c(4, 9, 16), sqrt)
 map_chr(c(4, 9, 16), sqrt)
 ```
 
-## List-cols in data frames
+### List-cols in data frames
 
-List-cols are a powerful concept that underpin the later part of this tutorial.  If data frames are explained as a way to keep character and number vectors together, then list-cols in tibbles take these a step further and allow lists of any object to be kept together.  For example, we can create nested data frames where we have a data frame within a data frame:
+List-cols are a powerful concept that underpin the later part of this tutorial.  If data frames are explained as a way to keep character and number vectors together, then list-cols in tibbles takes this a step further and allow lists of any object to be kept together.  For example, we can create nested data frames where we have a data frame within a data frame:
 
 ```{r}
 gm_nest <- gapminder %>% group_by(country, continent) %>% nest()
 gm_nest
 ```
 
-Since the data column is a list-col we can access it as we would expect from a list.  For example, to get the data for the second row, Albania:
+Since the data column is a list column (list-col) we can access it as we would expect from a list.  For example, to get the data for the second row, Albania:
 
 ```{r}
 gm_nest$data[[2]]
 ```
 
-## Using map to manipulate list-cols
+### Using map to manipulate list-cols
 
 Since this list column is just a list, we can use map to count the number of rows in each data frame in the list:
 
@@ -123,7 +126,7 @@ There is also a shorthand formula syntax for this where the period `.` represent
 map_dbl(gm_nest[1:10,]$data, ~nrow(.))
 ```
 
-This allows us to reach into the data frame and perform an operation, such as summarise one of the columns:
+Defining our own function allows us to reach into the data frame and perform an operation, such as summarise one of the columns:
 
 ```{r}
 map_dbl(gm_nest[1:10,]$data, ~round(mean(.$lifeExp),1))
@@ -135,7 +138,7 @@ Importantly we can also do this at the level of the parent tibble and store the 
 gm_nest %>% mutate(avg_lifeExp=map_dbl(data, ~round(mean(.$lifeExp),1)))
 ```
 
-## The power of list-cols
+### The power of list-cols
 
 We could have summarised the gapminder data entirely in dplyr without worrying about list-cols and nested data frames:
 
@@ -154,7 +157,7 @@ gm_plots
 gm_plots$plot[[1]]
 ```
 
-## A complete example
+### A complete example
 
 In this example we combine the approaches described so far to:
 
@@ -178,22 +181,24 @@ ggplot(gapminder_analysis, aes(y=slope, colour=r2, x=continent)) +
 
 We can see that countries in Asia have has a faster increase in lifespan than those in Europe, whilst for Africa the picture is rather more mixed with some countries increasing and others staying the same or reducing and fitting more poorly to the linear regression model.  Further analysis shows that the reasons for this include genocide and the HIV/AIDS epidemic.
 
-# The tidyverse for Bioinformatics
-## What is Bioconductor?
+This example demonstrates how powerful analyses can be carried out with very concise and non-repetitive code using tidyverse principles.
 
-Bioconductor LINK is a suite of R packages and classes developed in R.  This allows biological data to be analysed and stored in efficient and consistent ways.  Analyses such as RNAseq analysis can also be controlled effectively using the list-cols framework.
+## The tidyverse for Bioinformatics
+### What is Bioconductor?
 
-## A typical RNA-seq workflow
+[Bioconductor](http://bioconductor.org/) is a suite of R packages and classes.  This allows biological data to be analysed and stored in efficient and consistent ways.  Analyses such as RNAseq analysis can also be controlled effectively using the list-cols framework.
+
+### A typical RNA-seq workflow
 
 RNA-sequencing is carried out to quantitate the amount of a gene present in a set of samples.  This can be done for all genes in the human genome simulatenously through the power of DNA sequencing.  We then ask which genes are _differentially expressed_ - ie are present in a different abundance in one set of samples (eg from a tumour) than another (eg normal).  A typical RNA-seq experiment will have the following workflow:
 
-- Align and count reads to form a SummarizedExperiment object
+- Align and count reads to form a [SummarizedExperiment](https://bioconductor.org/packages/release/bioc/html/SummarizedExperiment.html) object
 - Filter out genes with a low signal
 - Specify a design formula to do the differential expression
 - Specify a log2 fold change threshold to test for differentially expressed genes
 - Plot the results
 
-## An RNA-seq analysis
+### An RNA-seq analysis
 
 First load the SummarizedExperiment object and explore it:
 
@@ -261,7 +266,7 @@ topGene <- res %>% dplyr::arrange(padj) %>%
 plotCounts(dds, gene=topGene, intgroup=c("dex"))
 ```
 
-## RNA-seq in the tidyverse
+### RNA-seq in the tidyverse
 
 In the workflow there were a number of parameters that we might wish to vary:
 
@@ -273,10 +278,10 @@ We can set up a control data frame using the `tidyr::crossing` function which co
 
 ```{r}
 control_df <- tidyr::crossing(formula=c("~ cell + dex", "~ dex"), 
-                       lfcThreshold=c(0,1,2),
-                       min_count=c(1,5,10))   
+                       lfcThreshold=c(0,1),
+                       min_count=c(1,5))   
 control_df <- control_df %>% mutate(rn=row_number(),
-                                    se=map(rn, ~se)) %>% dplyr::slice(1:4)
+                                    se=map(rn, ~se)) 
 control_df
 ```
 
@@ -307,11 +312,11 @@ And then doing the differential expression analysis itself and extracting the re
 
 ```{r}
 results_df <- results_df %>%
-    mutate(dds=map(dds, ~DESeq(., quiet=TRUE, parallel = TRUE)),
+    mutate(dds=map(dds, ~DESeq(., quiet=TRUE)),
            res=map2(dds, lfcThreshold, ~results(.x, lfcThreshold=.y, tidy = TRUE) %>% tbl_df()))
 ```
 
-## Viewing the results
+### Viewing the results
 
 At this point we can add a plot object to the mix like we did for the gapminder example.  We define a plotting function to make the analysis more readable:
 
@@ -345,16 +350,16 @@ plots_df %>%
     cowplot::plot_grid(plotlist=.)
 ```
 
-# Limitations
+## Limitations
 
 Although the list-col approach  provides useful framework for this type of analysis it does have some limitations:
 
-- All of the data and results has to be held in the memory of one session.
+- All of the data and results have to be held in the memory of one session.
 - Can end up with multiple copies of data and very large data frames - models and plots will often contain the same data within the R object.
 - Operations on a normal list can be easily parallelised using parallel::parLapply for example.  This is more difficult using the list-col approach although one way is to split the tibble into a list of tibbles, and then parallelise across this.  
 - It can also be hard to wrap your brain around the necessary levels of abstraction!
 
-# Conclusion
+## Conclusion
 
 Storing and manipulating objects in a data frame is a powerful and useful framework for an analysis since it keeps related things together and avoids code repetition and bloat.  Analyses are parameterised which makes it very easy to add new values or change existing onces without copying and pasting big bits of code or having huge complicated functions.  Although in this post it is applied to bioinformatics it could be applied to anything where work is done in specialised R object classes.  
 
