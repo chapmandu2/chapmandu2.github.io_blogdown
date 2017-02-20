@@ -1,0 +1,542 @@
+---
+author: "Phil Chapman"
+categories: ["R", "tidyverse", "Bioconductor"]
+date: 2017-02-21
+description: "The power of list-cols in parameterising analyses"
+title: "Bioinformatics in the Tidyverse"
+---
+
+
+<!-- BLOGDOWN-BODY-BEFORE
+
+/BLOGDOWN-BODY-BEFORE -->
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>This is a blog post to expand on a talk I gave at the Manchester R Users Group on 21st February 2017. In it I give a brief overview of the tidyverse and its core concepts, before going on to discuss how the same concepts can be applied to bioinformatics analysis using Bioconductor classes and packages.</p>
+</div>
+<div id="what-is-the-tidyverse" class="section level1">
+<h1>What is the tidyverse?</h1>
+<p>The tidyverse is a suite of tools primarily developed by Hadley Wickham LINK and collaborators at RStudio LINK. The suite of packages can be conveniently installed as follows:</p>
+<pre class="r"><code>install.packages(&#39;tidyverse&#39;)</code></pre>
+<p>There are many talks and resources that go into much greater depth than I do here including:</p>
+<ul>
+<li>Managing many models talk on YouTube by Hadley Wickham LINK</li>
+<li>R for Data Science book LINK</li>
+<li>Tutorials and presentations from RStudio::conf 2017 LINK</li>
+<li>Webinars on RStudio website LINK</li>
+</ul>
+</div>
+<div id="key-concepts-in-the-tidyverse" class="section level1">
+<h1>Key concepts in the tidyverse</h1>
+<div id="tidy-data" class="section level2">
+<h2>Tidy data</h2>
+<p>They key concept of the tidyverse is that of tidy data. If you’re from a database background then think of this as normalised data. For example, the table below is NOT tidy data since the year variable is encoded as a column name:</p>
+<pre class="r"><code>library(tidyverse)
+table4a</code></pre>
+<pre><code>## # A tibble: 3 × 3
+##       country `1999` `2000`
+## *       &lt;chr&gt;  &lt;int&gt;  &lt;int&gt;
+## 1 Afghanistan    745   2666
+## 2      Brazil  37737  80488
+## 3       China 212258 213766</code></pre>
+<p>To turn this into tidy data with one observation per row, we can use the <code>tidyr</code> package:</p>
+<pre class="r"><code>df &lt;- gather(table4a, year, cases, -country)
+df</code></pre>
+<pre><code>## # A tibble: 6 × 3
+##       country  year  cases
+##         &lt;chr&gt; &lt;chr&gt;  &lt;int&gt;
+## 1 Afghanistan  1999    745
+## 2      Brazil  1999  37737
+## 3       China  1999 212258
+## 4 Afghanistan  2000   2666
+## 5      Brazil  2000  80488
+## 6       China  2000 213766</code></pre>
+</div>
+<div id="tibbles" class="section level2">
+<h2>Tibbles</h2>
+<p>Tibbles are an alternative to the data frame. The key differences are:</p>
+<ul>
+<li>Subsetting a tibble will always produce another tibble.</li>
+<li>A tibble will only print to screen - no more pages of output…</li>
+</ul>
+<pre class="r"><code>dplyr::filter(df, cases == &#39;Nigeria&#39;)</code></pre>
+<pre><code>## # A tibble: 0 × 3
+## # ... with 3 variables: country &lt;chr&gt;, year &lt;chr&gt;, cases &lt;int&gt;</code></pre>
+<pre class="r"><code>dplyr::select(df, country)</code></pre>
+<pre><code>## # A tibble: 6 × 1
+##       country
+##         &lt;chr&gt;
+## 1 Afghanistan
+## 2      Brazil
+## 3       China
+## 4 Afghanistan
+## 5      Brazil
+## 6       China</code></pre>
+<pre class="r"><code>library(gapminder)
+gapminder</code></pre>
+<pre><code>## # A tibble: 1,704 × 6
+##        country continent  year lifeExp      pop gdpPercap
+##         &lt;fctr&gt;    &lt;fctr&gt; &lt;int&gt;   &lt;dbl&gt;    &lt;int&gt;     &lt;dbl&gt;
+## 1  Afghanistan      Asia  1952  28.801  8425333  779.4453
+## 2  Afghanistan      Asia  1957  30.332  9240934  820.8530
+## 3  Afghanistan      Asia  1962  31.997 10267083  853.1007
+## 4  Afghanistan      Asia  1967  34.020 11537966  836.1971
+## 5  Afghanistan      Asia  1972  36.088 13079460  739.9811
+## 6  Afghanistan      Asia  1977  38.438 14880372  786.1134
+## 7  Afghanistan      Asia  1982  39.854 12881816  978.0114
+## 8  Afghanistan      Asia  1987  40.822 13867957  852.3959
+## 9  Afghanistan      Asia  1992  41.674 16317921  649.3414
+## 10 Afghanistan      Asia  1997  41.763 22227415  635.3414
+## # ... with 1,694 more rows</code></pre>
+</div>
+<div id="dplyr-and-the-pipe--" class="section level2">
+<h2>dplyr and the pipe - %&gt;%</h2>
+<p>The <code>dplyr</code> package provides an intuitive way of manipulating data frames that will come naturally to people from a database background who are used to SQL. Furthermore, the pipe operator allows function calls to be strung together sequentially rather than nested which improves readability. For example, the statements below:</p>
+<pre class="r"><code># base r
+gapminder[gapminder$country==&#39;China&#39;, c(&#39;country&#39;, &#39;continent&#39;, &#39;year&#39;, &#39;lifeExp&#39;)]</code></pre>
+<pre><code>## # A tibble: 12 × 4
+##    country continent  year  lifeExp
+##     &lt;fctr&gt;    &lt;fctr&gt; &lt;int&gt;    &lt;dbl&gt;
+## 1    China      Asia  1952 44.00000
+## 2    China      Asia  1957 50.54896
+## 3    China      Asia  1962 44.50136
+## 4    China      Asia  1967 58.38112
+## 5    China      Asia  1972 63.11888
+## 6    China      Asia  1977 63.96736
+## 7    China      Asia  1982 65.52500
+## 8    China      Asia  1987 67.27400
+## 9    China      Asia  1992 68.69000
+## 10   China      Asia  1997 70.42600
+## 11   China      Asia  2002 72.02800
+## 12   China      Asia  2007 72.96100</code></pre>
+<pre class="r"><code># dplyr
+dplyr::select(dplyr::filter(gapminder, country==&#39;China&#39;), country, continent, year, lifeExp)</code></pre>
+<pre><code>## # A tibble: 12 × 4
+##    country continent  year  lifeExp
+##     &lt;fctr&gt;    &lt;fctr&gt; &lt;int&gt;    &lt;dbl&gt;
+## 1    China      Asia  1952 44.00000
+## 2    China      Asia  1957 50.54896
+## 3    China      Asia  1962 44.50136
+## 4    China      Asia  1967 58.38112
+## 5    China      Asia  1972 63.11888
+## 6    China      Asia  1977 63.96736
+## 7    China      Asia  1982 65.52500
+## 8    China      Asia  1987 67.27400
+## 9    China      Asia  1992 68.69000
+## 10   China      Asia  1997 70.42600
+## 11   China      Asia  2002 72.02800
+## 12   China      Asia  2007 72.96100</code></pre>
+<p>Give the same output as this:</p>
+<pre class="r"><code># pipe and dplyr
+gapminder %&gt;% dplyr::filter(country==&#39;China&#39;) %&gt;% dplyr::select(country, continent, year, lifeExp)</code></pre>
+<pre><code>## # A tibble: 12 × 4
+##    country continent  year  lifeExp
+##     &lt;fctr&gt;    &lt;fctr&gt; &lt;int&gt;    &lt;dbl&gt;
+## 1    China      Asia  1952 44.00000
+## 2    China      Asia  1957 50.54896
+## 3    China      Asia  1962 44.50136
+## 4    China      Asia  1967 58.38112
+## 5    China      Asia  1972 63.11888
+## 6    China      Asia  1977 63.96736
+## 7    China      Asia  1982 65.52500
+## 8    China      Asia  1987 67.27400
+## 9    China      Asia  1992 68.69000
+## 10   China      Asia  1997 70.42600
+## 11   China      Asia  2002 72.02800
+## 12   China      Asia  2007 72.96100</code></pre>
+<p>The RStudio Data Wrangling cheatsheet LINK provides a useful resource for getting to know dplyr.</p>
+</div>
+<div id="purrr-and-its-map-function" class="section level2">
+<h2>purrr and its map function</h2>
+<p>The purrr package provides a number of functions to make R more consistent and programming friendly than the equivalent base R functions. At first it’s <code>map</code> function seems like a reimplementation of <code>apply</code>:</p>
+<pre class="r"><code>map(c(4, 9, 16), sqrt)</code></pre>
+<pre><code>## [[1]]
+## [1] 2
+## 
+## [[2]]
+## [1] 3
+## 
+## [[3]]
+## [1] 4</code></pre>
+<p>But <code>map</code> will <em>always</em> return a list, and there are other members of the <code>map_</code> family which will always return a certain data type:</p>
+<pre class="r"><code>map_dbl(c(4, 9, 16), sqrt)</code></pre>
+<pre><code>## [1] 2 3 4</code></pre>
+<pre class="r"><code>map_chr(c(4, 9, 16), sqrt)</code></pre>
+<pre><code>## [1] &quot;2.000000&quot; &quot;3.000000&quot; &quot;4.000000&quot;</code></pre>
+</div>
+<div id="list-cols-in-data-frames" class="section level2">
+<h2>List-cols in data frames</h2>
+<p>List-cols are a powerful concept that underpin the later part of this tutorial. If data frames are explained as a way to keep character and number vectors together, then list-cols in tibbles take these a step further and allow lists of any object to be kept together. For example, we can create nested data frames where we have a data frame within a data frame:</p>
+<pre class="r"><code>gm_nest &lt;- gapminder %&gt;% group_by(country, continent) %&gt;% nest()
+gm_nest</code></pre>
+<pre><code>## # A tibble: 142 × 3
+##        country continent              data
+##         &lt;fctr&gt;    &lt;fctr&gt;            &lt;list&gt;
+## 1  Afghanistan      Asia &lt;tibble [12 × 4]&gt;
+## 2      Albania    Europe &lt;tibble [12 × 4]&gt;
+## 3      Algeria    Africa &lt;tibble [12 × 4]&gt;
+## 4       Angola    Africa &lt;tibble [12 × 4]&gt;
+## 5    Argentina  Americas &lt;tibble [12 × 4]&gt;
+## 6    Australia   Oceania &lt;tibble [12 × 4]&gt;
+## 7      Austria    Europe &lt;tibble [12 × 4]&gt;
+## 8      Bahrain      Asia &lt;tibble [12 × 4]&gt;
+## 9   Bangladesh      Asia &lt;tibble [12 × 4]&gt;
+## 10     Belgium    Europe &lt;tibble [12 × 4]&gt;
+## # ... with 132 more rows</code></pre>
+<p>Since the data column is a list-col we can access it as we would expect from a list. For example, to get the data for the second row, Albania:</p>
+<pre class="r"><code>gm_nest$data[[2]]</code></pre>
+<pre><code>## # A tibble: 12 × 4
+##     year lifeExp     pop gdpPercap
+##    &lt;int&gt;   &lt;dbl&gt;   &lt;int&gt;     &lt;dbl&gt;
+## 1   1952  55.230 1282697  1601.056
+## 2   1957  59.280 1476505  1942.284
+## 3   1962  64.820 1728137  2312.889
+## 4   1967  66.220 1984060  2760.197
+## 5   1972  67.690 2263554  3313.422
+## 6   1977  68.930 2509048  3533.004
+## 7   1982  70.420 2780097  3630.881
+## 8   1987  72.000 3075321  3738.933
+## 9   1992  71.581 3326498  2497.438
+## 10  1997  72.950 3428038  3193.055
+## 11  2002  75.651 3508512  4604.212
+## 12  2007  76.423 3600523  5937.030</code></pre>
+</div>
+<div id="using-map-to-manipulate-list-cols" class="section level2">
+<h2>Using map to manipulate list-cols</h2>
+<p>Since this list column is just a list, we can use map to count the number of rows in each data frame in the list:</p>
+<pre class="r"><code>map_dbl(gm_nest[1:10,]$data, nrow)</code></pre>
+<pre><code>##  [1] 12 12 12 12 12 12 12 12 12 12</code></pre>
+<p>Rather than providing a ready to use function we can also define our own:</p>
+<pre class="r"><code>map_dbl(gm_nest[1:10,]$data, function(x) nrow(x))</code></pre>
+<pre><code>##  [1] 12 12 12 12 12 12 12 12 12 12</code></pre>
+<p>There is also a shorthand formula syntax for this where the period <code>.</code> represents the element of the list that is being processed:</p>
+<pre class="r"><code>map_dbl(gm_nest[1:10,]$data, ~nrow(.))</code></pre>
+<pre><code>##  [1] 12 12 12 12 12 12 12 12 12 12</code></pre>
+<p>This allows us to reach into the data frame and perform an operation, such as summarise one of the columns:</p>
+<pre class="r"><code>map_dbl(gm_nest[1:10,]$data, ~round(mean(.$lifeExp),1))</code></pre>
+<pre><code>##  [1] 37.5 68.4 59.0 37.9 69.1 74.7 73.1 65.6 49.8 73.6</code></pre>
+<p>Importantly we can also do this at the level of the parent tibble and store the output in the data frame:</p>
+<pre class="r"><code>gm_nest %&gt;% mutate(avg_lifeExp=map_dbl(data, ~round(mean(.$lifeExp),1)))</code></pre>
+<pre><code>## # A tibble: 142 × 4
+##        country continent              data avg_lifeExp
+##         &lt;fctr&gt;    &lt;fctr&gt;            &lt;list&gt;       &lt;dbl&gt;
+## 1  Afghanistan      Asia &lt;tibble [12 × 4]&gt;        37.5
+## 2      Albania    Europe &lt;tibble [12 × 4]&gt;        68.4
+## 3      Algeria    Africa &lt;tibble [12 × 4]&gt;        59.0
+## 4       Angola    Africa &lt;tibble [12 × 4]&gt;        37.9
+## 5    Argentina  Americas &lt;tibble [12 × 4]&gt;        69.1
+## 6    Australia   Oceania &lt;tibble [12 × 4]&gt;        74.7
+## 7      Austria    Europe &lt;tibble [12 × 4]&gt;        73.1
+## 8      Bahrain      Asia &lt;tibble [12 × 4]&gt;        65.6
+## 9   Bangladesh      Asia &lt;tibble [12 × 4]&gt;        49.8
+## 10     Belgium    Europe &lt;tibble [12 × 4]&gt;        73.6
+## # ... with 132 more rows</code></pre>
+</div>
+<div id="the-power-of-list-cols" class="section level2">
+<h2>The power of list-cols</h2>
+<p>We could have summarised the gapminder data entirely in dplyr without worrying about list-cols and nested data frames:</p>
+<pre class="r"><code>gapminder %&gt;%
+    group_by(country) %&gt;%
+    summarise(avg_lifeExp=round(mean(lifeExp),1))</code></pre>
+<pre><code>## # A tibble: 142 × 2
+##        country avg_lifeExp
+##         &lt;fctr&gt;       &lt;dbl&gt;
+## 1  Afghanistan        37.5
+## 2      Albania        68.4
+## 3      Algeria        59.0
+## 4       Angola        37.9
+## 5    Argentina        69.1
+## 6    Australia        74.7
+## 7      Austria        73.1
+## 8      Bahrain        65.6
+## 9   Bangladesh        49.8
+## 10     Belgium        73.6
+## # ... with 132 more rows</code></pre>
+<p>However, by using <code>map</code> rather than <code>map_dbl</code> we can create new list-cols, which can contain lists of any object that we want. In the example below we create a plot for each country, then display the first plot for Afghanistan:</p>
+<pre class="r"><code>gm_plots &lt;- gm_nest %&gt;%
+    mutate(plot=map(data, ~qplot(x=year, y=lifeExp, data=.)))
+gm_plots</code></pre>
+<pre><code>## # A tibble: 142 × 4
+##        country continent              data     plot
+##         &lt;fctr&gt;    &lt;fctr&gt;            &lt;list&gt;   &lt;list&gt;
+## 1  Afghanistan      Asia &lt;tibble [12 × 4]&gt; &lt;S3: gg&gt;
+## 2      Albania    Europe &lt;tibble [12 × 4]&gt; &lt;S3: gg&gt;
+## 3      Algeria    Africa &lt;tibble [12 × 4]&gt; &lt;S3: gg&gt;
+## 4       Angola    Africa &lt;tibble [12 × 4]&gt; &lt;S3: gg&gt;
+## 5    Argentina  Americas &lt;tibble [12 × 4]&gt; &lt;S3: gg&gt;
+## 6    Australia   Oceania &lt;tibble [12 × 4]&gt; &lt;S3: gg&gt;
+## 7      Austria    Europe &lt;tibble [12 × 4]&gt; &lt;S3: gg&gt;
+## 8      Bahrain      Asia &lt;tibble [12 × 4]&gt; &lt;S3: gg&gt;
+## 9   Bangladesh      Asia &lt;tibble [12 × 4]&gt; &lt;S3: gg&gt;
+## 10     Belgium    Europe &lt;tibble [12 × 4]&gt; &lt;S3: gg&gt;
+## # ... with 132 more rows</code></pre>
+<pre class="r"><code>gm_plots$plot[[1]]</code></pre>
+<p><img src="#####../content/post/2017-02-21-bioinformatics-in-tidyverse_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
+</div>
+<div id="a-complete-example" class="section level2">
+<h2>A complete example</h2>
+<p>In this example we combine the approaches described so far to:</p>
+<ol style="list-style-type: decimal">
+<li>Nest the data</li>
+<li>Fit a linear regression model for each country</li>
+<li>Extract the slope and r2 value for each country</li>
+<li>Plot all countries together</li>
+</ol>
+<pre class="r"><code>gapminder_analysis &lt;- gapminder %&gt;%
+    group_by(country, continent) %&gt;%
+    nest() %&gt;%
+    mutate(model=map(data, ~lm(lifeExp ~ year, data=.)),
+           slope=map_dbl(model, ~coef(.)[&#39;year&#39;]),
+           r2=map_dbl(model, ~broom::glance(.)$`r.squared`))
+gapminder_analysis</code></pre>
+<pre><code>## # A tibble: 142 × 6
+##        country continent              data    model     slope        r2
+##         &lt;fctr&gt;    &lt;fctr&gt;            &lt;list&gt;   &lt;list&gt;     &lt;dbl&gt;     &lt;dbl&gt;
+## 1  Afghanistan      Asia &lt;tibble [12 × 4]&gt; &lt;S3: lm&gt; 0.2753287 0.9477123
+## 2      Albania    Europe &lt;tibble [12 × 4]&gt; &lt;S3: lm&gt; 0.3346832 0.9105778
+## 3      Algeria    Africa &lt;tibble [12 × 4]&gt; &lt;S3: lm&gt; 0.5692797 0.9851172
+## 4       Angola    Africa &lt;tibble [12 × 4]&gt; &lt;S3: lm&gt; 0.2093399 0.8878146
+## 5    Argentina  Americas &lt;tibble [12 × 4]&gt; &lt;S3: lm&gt; 0.2317084 0.9955681
+## 6    Australia   Oceania &lt;tibble [12 × 4]&gt; &lt;S3: lm&gt; 0.2277238 0.9796477
+## 7      Austria    Europe &lt;tibble [12 × 4]&gt; &lt;S3: lm&gt; 0.2419923 0.9921340
+## 8      Bahrain      Asia &lt;tibble [12 × 4]&gt; &lt;S3: lm&gt; 0.4675077 0.9667398
+## 9   Bangladesh      Asia &lt;tibble [12 × 4]&gt; &lt;S3: lm&gt; 0.4981308 0.9893609
+## 10     Belgium    Europe &lt;tibble [12 × 4]&gt; &lt;S3: lm&gt; 0.2090846 0.9945406
+## # ... with 132 more rows</code></pre>
+<pre class="r"><code>ggplot(gapminder_analysis, aes(y=slope, colour=r2, x=continent)) + 
+    geom_point(position=position_jitter(w=0.2)) +
+    theme_bw()</code></pre>
+<p><img src="#####../content/post/2017-02-21-bioinformatics-in-tidyverse_files/figure-html/unnamed-chunk-18-1.png" width="672" /></p>
+<p>We can see that countries in Asia have has a faster increase in lifespan than those in Europe, whilst for Africa the picture is rather more mixed with some countries increasing and others staying the same or reducing and fitting more poorly to the linear regression model. Further analysis shows that the reasons for this include genocide and the HIV/AIDS epidemic.</p>
+</div>
+</div>
+<div id="the-tidyverse-for-bioinformatics" class="section level1">
+<h1>The tidyverse for Bioinformatics</h1>
+<div id="what-is-bioconductor" class="section level2">
+<h2>What is Bioconductor?</h2>
+<p>Bioconductor LINK is a suite of R packages and classes developed in R. This allows biological data to be analysed and stored in efficient and consistent ways. Analyses such as RNAseq analysis can also be controlled effectively using the list-cols framework.</p>
+</div>
+<div id="a-typical-rna-seq-workflow" class="section level2">
+<h2>A typical RNA-seq workflow</h2>
+<p>RNA-sequencing is carried out to quantitate the amount of a gene present in a set of samples. This can be done for all genes in the human genome simulatenously through the power of DNA sequencing. We then ask which genes are <em>differentially expressed</em> - ie are present in a different abundance in one set of samples (eg from a tumour) than another (eg normal). A typical RNA-seq experiment will have the following workflow:</p>
+<ul>
+<li>Align and count reads to form a SummarizedExperiment object</li>
+<li>Filter out genes with a low signal</li>
+<li>Specify a design formula to do the differential expression</li>
+<li>Specify a log2 fold change threshold to test for differentially expressed genes</li>
+<li>Plot the results</li>
+</ul>
+</div>
+<div id="an-rna-seq-analysis" class="section level2">
+<h2>An RNA-seq analysis</h2>
+<p>First load the SummarizedExperiment object and explore it:</p>
+<pre class="r"><code>#adapted from https://f1000research.com/articles/4-1070/v2
+library(airway)
+library(DESeq2)
+data(airway)
+se &lt;- airway
+se</code></pre>
+<pre><code>## class: RangedSummarizedExperiment 
+## dim: 64102 8 
+## metadata(1): &#39;&#39;
+## assays(1): counts
+## rownames(64102): ENSG00000000003 ENSG00000000005 ... LRG_98 LRG_99
+## rowData names(0):
+## colnames(8): SRR1039508 SRR1039509 ... SRR1039520 SRR1039521
+## colData names(9): SampleName cell ... Sample BioSample</code></pre>
+<pre class="r"><code>colData(se)</code></pre>
+<pre><code>## DataFrame with 8 rows and 9 columns
+##            SampleName     cell      dex    albut        Run avgLength
+##              &lt;factor&gt; &lt;factor&gt; &lt;factor&gt; &lt;factor&gt;   &lt;factor&gt; &lt;integer&gt;
+## SRR1039508 GSM1275862   N61311    untrt    untrt SRR1039508       126
+## SRR1039509 GSM1275863   N61311      trt    untrt SRR1039509       126
+## SRR1039512 GSM1275866  N052611    untrt    untrt SRR1039512       126
+## SRR1039513 GSM1275867  N052611      trt    untrt SRR1039513        87
+## SRR1039516 GSM1275870  N080611    untrt    untrt SRR1039516       120
+## SRR1039517 GSM1275871  N080611      trt    untrt SRR1039517       126
+## SRR1039520 GSM1275874  N061011    untrt    untrt SRR1039520       101
+## SRR1039521 GSM1275875  N061011      trt    untrt SRR1039521        98
+##            Experiment    Sample    BioSample
+##              &lt;factor&gt;  &lt;factor&gt;     &lt;factor&gt;
+## SRR1039508  SRX384345 SRS508568 SAMN02422669
+## SRR1039509  SRX384346 SRS508567 SAMN02422675
+## SRR1039512  SRX384349 SRS508571 SAMN02422678
+## SRR1039513  SRX384350 SRS508572 SAMN02422670
+## SRR1039516  SRX384353 SRS508575 SAMN02422682
+## SRR1039517  SRX384354 SRS508576 SAMN02422673
+## SRR1039520  SRX384357 SRS508579 SAMN02422683
+## SRR1039521  SRX384358 SRS508580 SAMN02422677</code></pre>
+<pre class="r"><code>colnames(assay(se))</code></pre>
+<pre><code>## [1] &quot;SRR1039508&quot; &quot;SRR1039509&quot; &quot;SRR1039512&quot; &quot;SRR1039513&quot; &quot;SRR1039516&quot;
+## [6] &quot;SRR1039517&quot; &quot;SRR1039520&quot; &quot;SRR1039521&quot;</code></pre>
+<pre class="r"><code>rownames(assay(se))[1:10]</code></pre>
+<pre><code>##  [1] &quot;ENSG00000000003&quot; &quot;ENSG00000000005&quot; &quot;ENSG00000000419&quot;
+##  [4] &quot;ENSG00000000457&quot; &quot;ENSG00000000460&quot; &quot;ENSG00000000938&quot;
+##  [7] &quot;ENSG00000000971&quot; &quot;ENSG00000001036&quot; &quot;ENSG00000001084&quot;
+## [10] &quot;ENSG00000001167&quot;</code></pre>
+<pre class="r"><code>assay(se)[1:5,1:5]</code></pre>
+<pre><code>##                 SRR1039508 SRR1039509 SRR1039512 SRR1039513 SRR1039516
+## ENSG00000000003        679        448        873        408       1138
+## ENSG00000000005          0          0          0          0          0
+## ENSG00000000419        467        515        621        365        587
+## ENSG00000000457        260        211        263        164        245
+## ENSG00000000460         60         55         40         35         78</code></pre>
+<p>We can count up the number of reads per sample using the <code>colSums</code> function, or using <code>purrr</code>:</p>
+<pre class="r"><code>colSums(assay(se))</code></pre>
+<pre><code>## SRR1039508 SRR1039509 SRR1039512 SRR1039513 SRR1039516 SRR1039517 
+##   20637971   18809481   25348649   15163415   24448408   30818215 
+## SRR1039520 SRR1039521 
+##   19126151   21164133</code></pre>
+<pre class="r"><code>purrr::map_dbl(colnames(assay(se)), ~sum(assay(se)[,.]))</code></pre>
+<pre><code>## [1] 20637971 18809481 25348649 15163415 24448408 30818215 19126151 21164133</code></pre>
+<p>We then create a <code>DESeqDataSet</code> object and set the design formula</p>
+<pre class="r"><code>dds &lt;- DESeqDataSet(se, design = ~ cell + dex)</code></pre>
+<p>Get rid of genes with few reads</p>
+<pre class="r"><code>dds &lt;- dds[ rowSums(counts(dds)) &gt; 1, ]</code></pre>
+<p>Re-count the library size:</p>
+<pre class="r"><code>dds &lt;- estimateSizeFactors(dds)</code></pre>
+<p>Do a Principal Compnent Analysis to understand the data structure:</p>
+<pre class="r"><code>rld &lt;- vst(dds, blind=FALSE)
+pca_plot &lt;- plotPCA(rld, intgroup = c(&quot;dex&quot;, &quot;cell&quot;))
+pca_plot</code></pre>
+<p><img src="#####../content/post/2017-02-21-bioinformatics-in-tidyverse_files/figure-html/unnamed-chunk-24-1.png" width="672" /></p>
+<p>Do the differential expression analysis and extract the results:</p>
+<pre class="r"><code>dds &lt;- DESeq(dds, quiet = TRUE)
+res &lt;- results(dds, lfcThreshold=0, tidy = TRUE) %&gt;% tbl_df()
+res</code></pre>
+<pre><code>## # A tibble: 29,391 × 7
+##                row     baseMean log2FoldChange      lfcSE       stat
+##              &lt;chr&gt;        &lt;dbl&gt;          &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;
+## 1  ENSG00000000003  708.6021697     0.37415193 0.09884432  3.7852647
+## 2  ENSG00000000419  520.2979006    -0.20206144 0.10974240 -1.8412340
+## 3  ENSG00000000457  237.1630368    -0.03616620 0.13834539 -0.2614196
+## 4  ENSG00000000460   57.9326331     0.08446385 0.24990676  0.3379815
+## 5  ENSG00000000938    0.3180984     0.08413902 0.15133424  0.5559814
+## 6  ENSG00000000971 5817.3528677    -0.42111175 0.08709010 -4.8353572
+## 7  ENSG00000001036 1282.1063855     0.23780679 0.08748607  2.7182247
+## 8  ENSG00000001084  609.8920919     0.04305490 0.15874177  0.2712260
+## 9  ENSG00000001167  369.3428078     0.48619170 0.11774073  4.1293416
+## 10 ENSG00000001460  183.2376742     0.11818056 0.17004168  0.6950094
+## # ... with 29,381 more rows, and 2 more variables: pvalue &lt;dbl&gt;,
+## #   padj &lt;dbl&gt;</code></pre>
+<p>Plot the results as an MA plot with abundance of the gene on the x-axis and fold change on the y-axis. Colour represents significance of the statistical test.</p>
+<pre class="r"><code>ma_plot &lt;- ggplot(res, aes(log2(baseMean), log2FoldChange, colour=padj&lt;0.1)) + 
+    geom_point(size=rel(0.5), aes(text=row)) + theme_bw()</code></pre>
+<pre><code>## Warning: Ignoring unknown aesthetics: text</code></pre>
+<pre class="r"><code>ma_plot</code></pre>
+<p><img src="#####../content/post/2017-02-21-bioinformatics-in-tidyverse_files/figure-html/unnamed-chunk-26-1.png" width="672" /></p>
+<p>We can look at the top differentially expressed gene to see that there is indeed a difference between treated and untreated:</p>
+<pre class="r"><code>topGene &lt;- res %&gt;% dplyr::arrange(padj) %&gt;% 
+    dplyr::slice(1) %&gt;% dplyr::select(row) %&gt;% unlist() %&gt;% unname()
+plotCounts(dds, gene=topGene, intgroup=c(&quot;dex&quot;))</code></pre>
+<p><img src="#####../content/post/2017-02-21-bioinformatics-in-tidyverse_files/figure-html/unnamed-chunk-27-1.png" width="672" /></p>
+</div>
+<div id="rna-seq-in-the-tidyverse" class="section level2">
+<h2>RNA-seq in the tidyverse</h2>
+<p>In the workflow there were a number of parameters that we might wish to vary:</p>
+<ul>
+<li>the design formula</li>
+<li>the log2 fold change threshold (<code>lfcThreshold</code>)</li>
+<li>the minimum read count</li>
+</ul>
+<p>We can set up a control data frame using the <code>tidyr::crossing</code> function which contains 1 row per combination of parameters, and then add in the SummarizedExperiment object and a row number:</p>
+<pre class="r"><code>control_df &lt;- tidyr::crossing(formula=c(&quot;~ cell + dex&quot;, &quot;~ dex&quot;), 
+                       lfcThreshold=c(0,1,2),
+                       min_count=c(1,5,10))   
+control_df &lt;- control_df %&gt;% mutate(rn=row_number(),
+                                    se=map(rn, ~se)) %&gt;% dplyr::slice(1:4)
+control_df</code></pre>
+<pre><code>## # A tibble: 4 × 5
+##        formula lfcThreshold min_count    rn
+##          &lt;chr&gt;        &lt;dbl&gt;     &lt;dbl&gt; &lt;int&gt;
+## 1 ~ cell + dex            0         1     1
+## 2 ~ cell + dex            0         5     2
+## 3 ~ cell + dex            0        10     3
+## 4 ~ cell + dex            1         1     4
+## # ... with 1 more variables: se &lt;list&gt;</code></pre>
+<p>Using <code>map2</code> we can execute the <code>DESeqDataSet</code> function for each row taking the design formula and SummarizedExperiment object as inputs:</p>
+<pre class="r"><code>results_df &lt;- control_df %&gt;%
+    mutate(dds=map2(se, formula, ~DESeqDataSet(.x, design=as.formula(.y))))
+results_df</code></pre>
+<pre><code>## # A tibble: 4 × 6
+##        formula lfcThreshold min_count    rn
+##          &lt;chr&gt;        &lt;dbl&gt;     &lt;dbl&gt; &lt;int&gt;
+## 1 ~ cell + dex            0         1     1
+## 2 ~ cell + dex            0         5     2
+## 3 ~ cell + dex            0        10     3
+## 4 ~ cell + dex            1         1     4
+## # ... with 2 more variables: se &lt;list&gt;, dds &lt;list&gt;</code></pre>
+<p>At this point it is worth sanity checking that we have done what we wanted to do by comparing the input formula with that extracted from the DESeqDataSet:</p>
+<pre class="r"><code>results_df$formula</code></pre>
+<pre><code>## [1] &quot;~ cell + dex&quot; &quot;~ cell + dex&quot; &quot;~ cell + dex&quot; &quot;~ cell + dex&quot;</code></pre>
+<pre class="r"><code>map_chr(results_df$dds, ~design(.) %&gt;% as.character() %&gt;% paste(collapse=&#39; &#39;))</code></pre>
+<pre><code>## [1] &quot;~ cell + dex&quot; &quot;~ cell + dex&quot; &quot;~ cell + dex&quot; &quot;~ cell + dex&quot;</code></pre>
+<p>Then finish off preparing the DESeqDataset object by removing genes below a certain read count:</p>
+<pre class="r"><code>results_df &lt;- results_df %&gt;%
+    mutate(dds=map2(dds, min_count, ~.x[ rowSums(counts(.x)) &gt; .y , ]),
+           dds=map(dds, estimateSizeFactors))</code></pre>
+<p>And then doing the differential expression analysis itself and extracting the results:</p>
+<pre class="r"><code>results_df &lt;- results_df %&gt;%
+    mutate(dds=map(dds, ~DESeq(., quiet=TRUE, parallel = TRUE)),
+           res=map2(dds, lfcThreshold, ~results(.x, lfcThreshold=.y, tidy = TRUE) %&gt;% tbl_df()))</code></pre>
+</div>
+<div id="viewing-the-results" class="section level2">
+<h2>Viewing the results</h2>
+<p>At this point we can add a plot object to the mix like we did for the gapminder example. We define a plotting function to make the analysis more readable:</p>
+<pre class="r"><code>#define a plot function
+my_plot &lt;- function(df, pthresh) {
+    ggplot(df, aes(log2(baseMean), log2FoldChange, colour=padj&lt;pthresh)) + 
+        geom_point(size=rel(0.5)) + 
+        theme_bw()
+}
+
+#make the plots
+plots_df &lt;- results_df %&gt;%
+    mutate(ma_plot=map2(res, rn, ~my_plot(.x, 0.1) + ggtitle(.y)))
+plots_df</code></pre>
+<pre><code>## # A tibble: 4 × 8
+##        formula lfcThreshold min_count    rn
+##          &lt;chr&gt;        &lt;dbl&gt;     &lt;dbl&gt; &lt;int&gt;
+## 1 ~ cell + dex            0         1     1
+## 2 ~ cell + dex            0         5     2
+## 3 ~ cell + dex            0        10     3
+## 4 ~ cell + dex            1         1     4
+## # ... with 4 more variables: se &lt;list&gt;, dds &lt;list&gt;, res &lt;list&gt;,
+## #   ma_plot &lt;list&gt;</code></pre>
+<p>We can then display the plots from the ma_plot list-col:</p>
+<pre class="r"><code>cowplot::plot_grid(plotlist=plots_df$ma_plot[1:4])</code></pre>
+<p><img src="#####../content/post/2017-02-21-bioinformatics-in-tidyverse_files/figure-html/unnamed-chunk-34-1.png" width="672" /></p>
+<p>Or we can filter the data frame and just show some plots, for example those where the minimum read count was 1:</p>
+<pre class="r"><code>plots_df %&gt;% 
+    dplyr::filter(min_count==1) %&gt;% 
+    dplyr::select(ma_plot) %&gt;%
+    .$ma_plot %&gt;%
+    cowplot::plot_grid(plotlist=.)</code></pre>
+<p><img src="#####../content/post/2017-02-21-bioinformatics-in-tidyverse_files/figure-html/unnamed-chunk-35-1.png" width="672" /></p>
+</div>
+</div>
+<div id="limitations" class="section level1">
+<h1>Limitations</h1>
+<p>Although the list-col approach provides useful framework for this type of analysis it does have some limitations:</p>
+<ul>
+<li>All of the data and results has to be held in the memory of one session.</li>
+<li>Can end up with multiple copies of data and very large data frames - models and plots will often contain the same data within the R object.</li>
+<li>Operations on a normal list can be easily parallelised using parallel::parLapply for example. This is more difficult using the list-col approach although one way is to split the tibble into a list of tibbles, and then parallelise across this.<br />
+</li>
+<li>It can also be hard to wrap your brain around the necessary levels of abstraction!</li>
+</ul>
+</div>
+<div id="conclusion" class="section level1">
+<h1>Conclusion</h1>
+<p>Storing and manipulating objects in a data frame is a powerful and useful framework for an analysis since it keeps related things together and avoids code repetition and bloat. Analyses are parameterised which makes it very easy to add new values or change existing onces without copying and pasting big bits of code or having huge complicated functions. Although in this post it is applied to bioinformatics it could be applied to anything where work is done in specialised R object classes.</p>
+<p>There is lots of work being done in the R community to extend these concepts, so keep an eye out for online presentations and tutorials!!</p>
+</div>
+
+
+<!-- BLOGDOWN-HEAD
+
+
+
+
+/BLOGDOWN-HEAD -->
